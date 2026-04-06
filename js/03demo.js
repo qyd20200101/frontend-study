@@ -137,3 +137,20 @@ function throttle(fn,delay) {
 window.oncancel = throttle(() =>{
     console.log("加载更多");
 },1000);
+
+/*
+六、数组去重（真实场景：后端返回重复标签）
+*/
+//后端返回
+let tags = ['JS','css','JS','vue','css','React'];
+
+//1.Set去重
+
+let unique1 = [...new Set(tags)];
+
+//2.filter去重
+let unique2 = tags.filter((item,index) =>{
+    tags.indexOf(item) ===index;
+})
+
+console.log(unique1);
