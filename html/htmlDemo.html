@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<!-- html为根标签 -->
+<html lang="en">
+    <!-- en为英语,zn-CN为中文 -->
+<head>
+    <!-- UTF-8为编码格式 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<!-- head与body标签为兄弟关系 -->
+ <!-- title为网页的标题 -->
+<title>
+    <!-- head与title为父子关系 -->
+    hello world!
+</title>
+<!-- body标签放网页的主题内容 -->
+<body>
+    <!-- <h1>-<h6>为标题标签 -->
+    <h1>Hello, World!</h1>
+    <h2>Subtitle</h2>
+    <h3>Third Level Heading</h3>
+    <h4>Fourth Level Heading</h4>
+    <h5>Fifth Level Heading</h5>
+    <h6>Sixth Level Heading</h6>
+    <!-- <p>为段落标签 -->
+    <p>你好</p>
+    <!-- <br/>为换行标签 -->
+    <br/>
+    <strong>加粗文本</strong>
+    <b>粗体文本</b>
+    <!-- 倾斜 -->
+    <em>倾斜</em>
+    <i>倾斜</i>
+    <!-- 下划线 -->
+    <ins>下划线</ins>
+    <u>下划线</u>
+    <!-- 删除线 -->
+     <del>删除线</del>
+     <!-- 盒子标签 -->
+      <div>
+        一行只能放一个
+      </div>
+      <div>这是第二个盒子</div>
+      <span>
+        一行可以放多个
+      </span>
+      <!-- 属性采用键值对格式 -->
+      <img src="图像的url" alt="文本，图像不能正常显示的文字",title="提示文字">
+      <span>支持gif动图,png照片,webp谷歌推出的网页图片显示格式，文件小，base64将图片使用base64编码，转化为字符,以字符的形式引入图片与网页一起加载</span>
+      <!-- 相对路径，绝对路径 -->
+       <div>
+        <span>根目录：打开文件夹的第一层</span>
+        <span>相对路径：以引用文件所在位置为参考基础，二简历出的目录路径</span>
+        <span>同一级路径：直接写文件的路径名称</span>
+        <span>下一级路径使用"/"</span>
+        <span>上一级路径使用:"../"</span>
+       </div>
+       <div>
+        <span>绝对路径：目录下的绝对位置,通常以盘符为开始</span>
+        <span>"D:\\WEB\images\tu1.gif"</span>
+       </div>
+       <!-- 超链接 -->
+        <a href="跳转的url",target="_self">点击跳转</a>
+        <span>target属性：指定链接页面的打开方式，_self默认打开，——blank：指定新窗口</span>
+        <!-- 注释 -->
+       <!-- 表格标签 -->
+        <table border="1">
+            <!-- thead标签为表格的头部区域,内部必须有tr标签 -->
+           <thead>
+            <!-- tr是用于定义表格中的行的标签 -->
+             <tr>
+                <th>表头</th>
+            </tr>
+           </thead>
+           <!-- tbody为表格的主体 -->
+           <tbody>
+             <tr>
+                <!-- 用于定义表格中的单元格,td指表格数据 -->
+                 <!-- colspan为跨列合并 -->
+                <td colspan="3">123</td>
+                <td>1</td>
+                <td>2</td>
+            </tr>
+           </tbody>
+        </table>
+        <div>
+            <!-- ul无序列表,ul中只能嵌套li -->
+            <ul>
+                <!-- li为列表项 -->
+                <li>1</li>
+                <li>2</li>
+                <li>3</li>
+            </ul>
+            <!-- ol为有序列表 -->
+            <ol>
+                <li>1</li>
+                <li>2</li>
+                <li>3</li>
+            </ol>
+        </div>
+        <div>
+            <!-- 自定义标签,定义描述列表 -->
+            <dl>
+                <!-- 定义项目 -->
+                <dt>名词</dt>
+                <dd>对名词的解释1</dd>
+                <dd>对名词的解释2</dd>
+            </dl>
+        </div>
+        <div>
+            <!-- 表单标签 由表单域，表单控件，提示信息三部分组成 -->
+             <!-- action为指定接受并处理的服务器程序url地址,method为接受数据的方法,get/post 
+              name为表单名称,-->
+             <form action="url地址",method="get">
+                <!-- type不同类型接收不同的形式, name定义input元素的名称,value规定input的值,checked规定首次加载应当被选中
+                 maxlength规定输入字段中的字符最大长度-->
+                <input type="text"/>
+                <input type="button" value="输入"/>
+                <!-- 表单元素过多时，通过name来区别不同表单元素 -->
+                <!-- 单选按钮和复选按钮要有相同的name值 -->
+                 <!-- label为input元素定义标注的，用于绑定一个表单元素，for属性与相关元素的id相同/name属性 -->
+                <input type="checkbox" name="sex" id=""><label for="sex">男生</label>
+                <input type="password" name="password"><label for="password">密码</label>
+                <select name="city" id="">
+                    <option value="上海" selected>上海</option>
+                    <option value="">广州</option>
+                    <option value="">北京</option>
+                    <option value="">武汉</option>
+                    <option value="">山东</option>
+                </select>
+                <div>
+                    <!-- 定义多行文本输入,常见于留言板 -->
+                    <textarea name="" id=""></textarea>
+                </div>
+             </form>
+             <div>
+                <!-- 内联框架 frameborder指定内联框架的边框,0为无边框，1为有边框-->
+              <iframe src="" frameborder="0">内联框架</iframe>
+             </div>
+             <div>
+                <!-- html的template默认display:none,可以将列表放到template标签里面渲染 -->
+                <template >
+                    模板标签
+                </template>
+             </div>
+        </div>
+</body>
+<script src="../js/demo.js"></script>
+
+</html>
+

@@ -1,0 +1,217 @@
+/* 模拟框实现放大图片 */
+/* #caption{
+    margin: auto;
+    display: block;
+    width: 80%;
+    min-width: 700px;
+    text-align: center;
+    color: #ccc;
+    padding: 10px 0;
+    height: 150px;
+}
+.modal{
+    display: none;
+    position: fixed;
+    z-index: 1;
+    padding-top: 100px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgb(0, 0, 0);
+    background-color: rgba(0,0,0,0.9);
+}
+.modal-content{
+    margin: auto;
+    display: block;
+    width: 80%;
+    min-width: 700px;
+}
+.moadl-content, #caption{
+    animation-name: zoom;
+    animation-duration: 0.6s;
+}
+@keyframes zoom {
+    from{ transform: scale(0.1);}
+    to{transform: scale(1);}
+}
+.close{
+    position: absolute;
+    top: 15px;
+    right: 35px;
+    color: #f1f1f1;
+    font-size: 40px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+.close:hover,
+.close:focus{
+    color: #bbb;
+    text-decoration: none;
+    cursor: pointer;
+}
+#myImg{
+    width: 300px;
+    height: 200px;
+}
+#myImg:hover{
+    opacity: .7;
+}
+@media only screen and (max-width: 700px){
+    .modal-content {
+        width: 100%;
+    }
+} */
+/* 分页导航下标 */
+/* ul.pagination{
+    display: inline-block;
+    padding: 0;
+    margin: 0;
+    text-align: center;
+
+}
+ul.pagination li{
+    list-style: none;
+    display: inline;
+}
+ul.pagination li a{
+    float: left;
+    padding: 8px 16px;
+    color: black;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color .3s;
+}
+ul.pagination li a.active{
+    color: white;
+    background-color: #4eaf50;
+    border-radius: 4px;
+}
+ul.pagination li a:hover:not(.active){
+    background-color: #ddd;
+    border-radius: 4px;
+} */
+ /* flex布局实现 */
+ /* body{
+    direction: rtl;
+ }
+ .flex-container{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 400px;
+    height: 400px;
+    background-color: lightgrey;
+    text-align: center;
+ }
+ .flex-item{
+    margin: 10px;
+    width: 50px;
+    height: 50px;
+
+    background-color: cornflowerblue;
+ } */
+  /* flex实现响应式布局 */
+  /* .flex-container{
+    display: flex;
+    flex-flow: row wrap;
+    font-weight: bold;
+    text-align: center;
+  }
+  .flex-container > *{
+    padding: 10px;
+    flex: 1 100%;
+  }
+  .main{
+    text-align: left;
+    background: cornflowerblue;
+  }
+  .header{
+    background: coral;
+  }
+  .footer{
+    background: lightgreen;
+  }
+  .aside1{
+    background: moccasin;
+  }
+  .aside2{
+    background: violet;
+  }
+  
+@media all and (min-width: 600px) {
+    .aside { flex: 1 auto; }
+}
+  @media all and (min-width:800px) {
+    .main{
+        flex: 3 0px;
+    }
+    .aside1{
+        order: 1;
+    }
+    .main{
+        order: 2;
+    }
+    .aside2{
+        order: 3;
+    }
+    .footer{
+        order: 4;
+    }
+  } */
+   /* grid网格布局 */
+   .grid-container{
+    display: grid;
+    grid-gap: 10px;
+    grid-template-columns: auto auto auto;
+    background-color: #2196f3;
+    padding: 10px;
+   }
+
+   .grid-item{
+    padding: 20px 0;
+    font-size: 30px;
+    text-align: center;
+    background-color: rgba(255,255,255,0.8);
+    border: 1px solid rgba(0,0,0,0.8);
+   }
+    /* .item1{
+    grid-column-start: 1;
+    grid-column-end: 3;
+   }
+   .item2{
+    grid-column: 3;
+    grid-row: 1/span 2;
+   }
+   .item5{
+    grid-column: 1/span 3;
+    grid-row: 3;
+   } */
+   .item1{
+    grid-area: 1/3/1/3;
+   }
+   .item2{
+    grid-area: 2/3/2/3;
+   }
+   .item3{
+    grid-area: 1/1/2/2;
+   }
+   .item4{
+    grid-area: 1/2/2/3;
+   }
+   .item5{
+    grid-area: 2/1/3/2;
+   }
+   .item6{
+    grid-area: 2/2/3/3;
+   }
+   .item7{
+    grid-area: 3/2/3/3;
+   }
+   .item8{
+    grid-area: 3/3/3/3;
+   }
+   .item9{
+    grid-area: 2/2/3/3;
+   }

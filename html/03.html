@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<link rel="stylesheet" href="/css/03.css">
+<body>
+    <h2>一、CSS核心知识点</h2>
+    <h3>1.BFC是什么？有什么用</h3>
+    <p>块级格式化上下文，独立渲染区域，内部布局不影响外部</p>
+    <p>作用：清除浮动、解决margin塌陷，阻止元素被浮动覆盖</p>
+    <h3>2.margin塌陷/合并问题</h3>
+    <p>垂直方向相邻兄弟margin会合并，取较大值</p>
+    <p>父子元素margin塌陷（父无padding/border时）</p>
+    <p>解决：触发BFC、加padding/border、用flex布局</p>
+    <h3>三种居中方案</h3>
+    <!-- flex布局居中 -->
+    <p>1.flex居中</p>
+    <p>适用场景：弹窗，卡片，登录框，内容快整体居中</p>
+    <div class="container">
+        <div class="box">flex居中</div>
+    </div>
+    <p>父盒子flex,子盒子自动居中</p>
+    <!-- 绝对定位加transfrom -->
+    <p>2.绝对定位+transfrom（未知宽高居中）</p>
+    <p>适用场景：悬浮按钮，右上小标签，弹层</p>
+    <div class="parent">
+        <div class="child">绝对定位+transfrom</div>
+    </div>
+    <p>先走到50%,再拉回自己一半</p>
+    <!-- 行内元素居中 -->
+    <p>行内元素居中（文字，图片，按钮）</p>
+    <p>适用场景：单行文字，图标，导航文字，按钮内容</p>
+    <div class="inlineText">我是行内居中文字</div>
+    <p>水平text-align,单行垂直line-height=高度</p>
+    <script src="/js/03demo.js"></script>
+
+    <h3>盒模型</h3>
+    <p>标准盒模型：content-box->width = content</p>
+    <p>IE盒模型：border-box->width=content+padding+border</p>
+    <p>开发统一用：*{box-sizing:border-box;}</p>
+</body>
+</html>

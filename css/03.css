@@ -1,0 +1,42 @@
+.container{
+    width: 400px;
+    height: 300px;
+    border: 2px solid #ccc;
+    /* 核心三行 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.box{
+    width: 100px;
+    height: 100px;
+    background: skyblue;
+}
+
+.parent{
+    position: relative;
+    margin-top: 20px;
+    width: 400px;
+    height: 300px;
+    border: 2px solid #ccc;
+}
+
+.child{
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    /* 核心：拉回自身一半 */
+    transform: translate(-50%,-50%);
+    background: coral;
+    padding: 10px 20px;
+}
+
+.inlineText{
+    width: 300px;
+    height: 80px;
+    border: 2px solid #ccc;
+    /* 水平居中 */
+    text-align: center;
+    /* 单行垂直居中：行高=等于盒子高度 */
+    line-height: 80px;
+}

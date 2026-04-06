@@ -1,0 +1,214 @@
+body {
+    /* 设置背景颜色 */
+    /* 颜色有十六进制#ff0000,RGB,颜色名称 */
+    background: #d0e4fe;
+
+}
+
+ul {
+    margin: 0;
+    padding: 0;
+    width: 200px;
+    background: #f1f1f1;
+    list-style-type: none;
+}
+li{
+    text-align: center;
+    border-bottom: 1px solid #555;
+}
+a {
+    /* 取消下划线 */
+    display: block;
+    text-decoration: none;
+}
+
+/* 分组选择器 */
+h1,
+p {
+    font-size: 16px;
+}
+
+h1 {
+    /* 设置字体颜色 */
+    color: orange;
+    /* 设置文本为居中 */
+    text-align: center;
+}
+
+/*  选择器 属性声明（键值对形式）*/
+p {
+    /* 设置字体格式 */
+    font-family: 'Times New Roman', Times, serif;
+    /* 设置字体大小 */
+    font-size: 20px;
+}
+
+/* ul>li {
+    /* 列表项标记类型 
+    /*  list-style-type:url()指定图片
+    list-style-type: square;
+} */
+li a {
+    display: block;
+    padding: 8px 16px;
+    color: #000;
+
+}
+
+li a.active {
+    background: #4caf50;
+    color: white;
+}
+
+li a:hover {
+    background: #555;
+    color: white;
+}
+
+li a:hover:not(.active) {
+    background: #555;
+    color: white;
+}
+
+/* 类选择器 */
+/* 指定特定元素使用class */
+
+
+
+/* 嵌套选择器 */
+/* 组合选择器 */
+/* 后代  " " */
+/* 子元素选择器 > */
+/* 相邻兄弟选择器 + */
+/* 普通相对选择器 ~ */
+body>.class1 {
+    color: #000;
+}
+
+#para1 {
+    color: orange;
+    font-size: 18px;
+    text-align: right;
+    /* display:none隐藏元素后，元素不会占用空间 */
+    display: none;
+}
+
+ol>li {
+    color: #000;
+}
+
+#child {
+    /* 字体大小 px/16=em */
+    /* em用于IE浏览器 */
+    /* 百分比100%设置宽度，高度，字体大小等 */
+    font-size: 16px;
+    text-align: center;
+}
+
+/* 伪类选择器:基于选择元素为基准点，元素状态或属性 */
+/* love */
+/* :first-child 选择父元素的第一个子元素*/
+/* ：lang 属性为no的定义类型 */
+a:link {
+    /* 未访问链接 */
+}
+
+a:visited {
+    /* 已访问链接 */
+}
+
+a:hover {
+    /* 鼠标移动到链接上 */
+    color: aqua;
+}
+
+a:active {
+    /* 鼠标点击时 */
+    color: #000;
+}
+
+/* 伪元素不存在文档中 ::after:在元素之后插入内容,::before：在元素之前插入内容,::first-line */
+.img {
+    background-image: url(../study/img/image.png);
+    background-repeat: no-repeat;
+    width: 150px;
+    height: 140px;
+    /* visibility:hidden隐藏元素，但是元素会占用空间，依然会影响布局 */
+    visibility: hidden;
+}
+
+.left {
+    line-height: 30px;
+    text-align: left;
+    text-decoration: underline;
+    /* 文本缩进 */
+    text-indent: 20px;
+}
+
+.center {
+    text-align: center;
+    text-shadow: hoff voff blur #000;
+    text-decoration: line-through;
+}
+
+.right {
+    text-align: right;
+    text-decoration: overline;
+}
+
+/* 设置字体倾斜度 */
+.normal {
+    font-style: normal;
+}
+
+.italic {
+    font-style: italic;
+}
+
+.oblique {
+    font-style: oblique;
+}
+
+.box {
+    /* BFC块级作用域 */
+    /* 子元素或父元素的float不为none */
+    /* 父子元素的overflow为auto/scroll/hidden */
+    /* 父子元素的display的值为table-cell/inline-block */
+    margin: 20px 20px;
+    width: 220px;
+    height: 220px;
+    border: 20px;
+    background: #fff;
+    display: inline-block;
+    outline: #000;
+}
+
+/* 两个并列的元素，一个设置下边距，一个设置上边距，两者距离会以较大值 */
+/* 1.只给其中一个设置margin */
+/* 2.给每个元素设置父元素，触发BFC */
+#content {
+    margin: 30px 20px;
+    width: 50px;
+    height: 50px;
+    background: #000;
+}
+
+.trignle {
+    width: 0;
+    height: 0;
+    border-left: 50px solid transparent;
+    border-right: 50px solid transparent;
+    border-bottom: 50px solid #fff;
+
+}
+
+.fixed {
+    position: fixed;
+    top: 30px;
+    right: 50px;
+}
+
+.relative {
+    position: relative;
+    top: 300px;
+}

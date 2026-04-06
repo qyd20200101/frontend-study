@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- 在head标签里面使用link引入外部样式表,通过href指向样式文件 -->
+    <link rel="stylesheet" href="../css/cssDemo.css">
+    <!-- 在head标签内部插入style样式标签声明样式 -->
+    <!-- 如果link外部样式放在style样式后面则会覆盖style里面的 -->
+    <style>
+        li {
+            color: green;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 标签选择器 -->
+    <h1>我是h1标签</h1>
+    <p>我是p标签</p>
+    <!-- id选择器 -->
+    <!-- <div class="class1">
+        <ul>
+            <li>插入样式表的三种方法</li>
+            <li>外部样式表:在head标签里面使用link引入外部样式表,通过href指向样式文件</li>
+            <li>内部样式表:在head标签内部插入style样式标签声明样式 </li>
+            <li style="color: black;">内联样式:标签上使用style样式属性调用CSS属性</li>
+        </ul>
+        <span>内联样式打印内部样式大于外部样式</span>
+    </div>
+    <div>
+        <span>选择器优先逐渐增加级</span>
+        <ol>
+            <li>!important覆盖任何声明</li>
+            <li>通用选择器(*)</li>
+            <li>元素类型选择器</li>
+            <li>类选择器</li>
+            <li>属性选择器</li>
+            <li>伪类选择器</li>
+            <li>id选择器</li>
+        </ol>
+        <div>
+            <span>内联样式 > id 选择器 > 类选择器 = 伪类选择器 = 属性选择器 > 标签选择器 = 伪元素选择器</span>
+            <span>id选择器权重100</span>
+            <span>类选择器权重10</span>
+            <span>元素选择器权重1</span>
+        </div>
+    </div> -->
+    <div>
+        <a href="#"><span>跳转</span></a>
+    </div>
+    <div id="para1">
+        父标签
+        <!-- 子类会继承父类的颜色，字体大小等属性 -->
+        <div id="child" class="class1">子标签</div>
+    </div>
+    <div>
+        <div class="img">
+
+        </div>
+    </div>
+    <div>
+        <div class="left">居左</div>
+        <div class="center">居中</div>
+        <div class="right">居右</div>
+    </div>
+    <div>
+        <p class="normal">normal</p>
+        <p class="italic">italic</p>
+        <p class="obliqu">obliqu</p>
+    </div>
+    <!-- 盒子模型 -->
+    <div class="box">
+        <div id="content"></div>
+    </div>
+    <div class="trignle">
+
+    </div>
+    <div>
+        <h2>块级元素h2</h2>
+        <p>块级元素p</p>
+        <div>块级元素div</div>
+    </div>
+    <div>
+        <span>内联元素</span>
+        <a href="#">链接</a>
+    </div>
+    <!-- position定位 -->
+    <div class="static">
+        static
+    </div>
+    <div class="fixed">
+        fixed
+    </div>
+    <div class="relative">
+        relative
+    </div>
+    <!-- 1.absolute相对最近已定位父元素，元素没有已定位，那么相对于html -->
+    <!-- 2.absolute不占据空间，可能会与其他元素重叠  -->
+    <div class="absolute">absolute</div>
+    <!-- z-index设置元素堆叠顺序 -->
+    <!-- overflow溢出 ,必须指定高度的块元素-->
+    <div>
+        overflow
+    </div>
+    <!-- float浮动 -->
+    <div>
+        float
+    </div>
+    <div>块级元素水平垂直居中,设置margin：auto，设置width属性</div>
+    <div>文本居中行内元素,text-align：center</div>
+    <div>position绝对定位居中,会重叠元素</div>
+    <div>float实现左右对齐</div>
+    <div>padding实现垂直居中,但是容器的height会随着文本行数增加增大。line-height=height；实现垂直居中，但文本会溢出容器显示</div>
+    <div>position和transform实现垂直居中</div>
+    <!-- transform:translate(-50%，-50%)偏移各自的50% -->
+    <ul>
+        <li><a href="#home" class="active">主页</a></li>
+        <li><a href="#news">新闻</a></li>
+        <li><a href="#contact">联系</a></li>
+        <li><a href="#about">关于</a></li>
+    </ul>
+</body>
+
+</html>
