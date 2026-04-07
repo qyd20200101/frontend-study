@@ -50,7 +50,20 @@ class BasePlugin {
         }
         this._eventHandlers.get(element).set(event,boundHandler);
     }
+    _removeEventListener(element,event){
+        if (!this._eventHandlers.has(element)) return;
+        const eventMap = this._eventHandlers.get(element);
+        if (!eventMap.has(event)) return;
 
+        const handler = eventMap.get(event);
+        element.removeEventListener(event,handler);
+        // 从Map中删除记录
+        eventMap.delete(event);
+        // 清空空的元素条目
+        if (eventMap.size === 0) {
+            this._eventHandlers.delete(element);
+        }
+    }
     //显示组件
     show() {
         if (!this.isIninitalized) this.init();
@@ -209,18 +222,26 @@ class Modal extends BasePlugin {
         // 记录鼠标初始位置和弹窗参数位置
         this._dragStartX = e.clientX;
         this._dragStartY= e.clientY;
-
         this._modalStartX = content.offsetLeft;
         this._modalStartY = content.offsetTop;
 
         //保存content引用，避免重复查询
         this._draggingContent = content;
         //绑定移动和松开事件到document(防止鼠标移出弹窗后失效)
+        // 先解绑之前可能存在的事件，防止重复绑定（关键）
+        this._removeEventListener(document,'mousemove');
+        this._removeEventListener(document,'mouseup');
+
         this._addEventListener(document,'mousemove',this._onDragMove);
         this._addEventListener(document,'mouseup',this._onDragEnd);
+
+        //只设置一次position,避免次移动都重复设置
+        content.style.position = 'absolute';
     }
 
     _onDragMove(e) {
+        if (!this._draggingContent) return;
+
         const content = this._draggingContent;
         //  计算偏移量
         const deltaX = e.clientX - this._dragStartX;
@@ -233,8 +254,9 @@ class Modal extends BasePlugin {
     }
     _onDragEnd() {
         //移除移动和思考事件
-       this._eventHandlers.get(document).delete('mousemove');
-       this._eventHandlers.get(document).delete('mouseup');
+        //使用基类统一方法真正解绑事件
+        this._removeEventListener(document,'mousemove');
+        this._removeEventListener(document,'mouseup');
         delete this._draggingContent;
     }
 }
