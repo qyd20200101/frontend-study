@@ -1,0 +1,86 @@
+.modal-overlay{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.modal-content{
+    background: white;
+    text-align: center;
+    min-width: 350px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    overflow: hidden; /*裁剪圆角*/
+}
+
+/* 弹窗头部（拖拽区域） */
+.modal-header{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+    background: #fafafa;
+    cursor: move;
+    user-select: none;/*防止拖拽式选中文本*/
+}
+
+.modal-header h3{
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* 关闭按钮 */
+.modal-close{
+    background: none;
+    border: none;
+    font-style: 22px;
+    line-height: 1;
+    cursor: pointer;
+    color: #999;
+    padding: 0;
+    transition: color 0.2s;
+}
+
+.modal-close:hover{
+    padding: 24px 20px;
+    font-size: 14px;
+    color: #333;
+}
+.modal-buttons{
+    padding: 16px 20px;
+    border-top: 1px solid #eee;
+    text-align: right;
+}
+.modal-buttons button{
+    margin-left: 10px;
+    padding: 7px 18px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.modal-cancel{
+    background: #f5f5f5;
+    color: #333;
+}
+
+.modal-cancel:hover{
+    background: #e8e8e8;
+}
+
+.modal-confirm{
+    background: #1677ff;
+    color: white;
+}
+.modal-confirm:hover{
+    background: #4096ff;
+}
