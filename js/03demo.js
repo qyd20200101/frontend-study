@@ -6,7 +6,7 @@ let b= a;
 b =20;
 console.log(a);//10，没变
 console.log(b);
-//特点互不戛纳人，各存各的
+//特点互不干扰，各存各的
 
 //2.引用类型（堆：引用传递）
 let user1 = {name:'张三',age:20};

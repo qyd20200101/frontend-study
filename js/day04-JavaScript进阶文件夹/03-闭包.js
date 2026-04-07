@@ -63,7 +63,7 @@
 //     this.name = name;
 //     this.colors = ['red','blue'];
 // }
-// Animal.prototype.sayname = function () {
+// Animal.prototype.sayName = function () {
 //     console.log(this.name);
 // };
 
@@ -143,20 +143,20 @@
 // 场景案例1：Promise串行请求
 // */ 
 // //模拟请求函数
-// function fetchDate(url,delay) {
+// function fetchData(url,delay) {
 //     return new Promise((resolve) =>{
 //         setTimeout(() =>resolve(`Data from ${url}`),delay);
 //     });
 // }
 
 // // 串行执行，先请求A，再请求B，最后请求C
-// fetchDate('/api/a',1000).then(dataA =>{
+// fetchData('/api/a',1000).then(dataA =>{
 //     console.log(dataA);
-//     return fetchDate('/api/b',1000);
+//     return fetchData('/api/b',1000);
 // })
 // .then(dataB =>{
 //     console.log(dataB);
-//     return fetchDate('/api/c',1000);
+//     return fetchData('/api/c',1000);
 // })
 // .then(dataC =>{
 //     console.log(dataC);
@@ -167,9 +167,9 @@
 //     try{
 //         //并发请求，同时发起A,B,C,等待所有完成
 //         const [dataA,dataB,dataC] = await Promise.all([
-//             fetchDate('/api/a',1000),
-//             fetchDate('/api/b',1000),
-//             fetchDate('/api/c',1000)
+//             fetchData('/api/a',1000),
+//             fetchData('/api/b',1000),
+//             fetchData('/api/c',1000)
 //         ]); 
 //         console.log(dataA,dataB,dataC);
 //     }catch(err){
