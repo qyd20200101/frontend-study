@@ -3,121 +3,155 @@
 作用：封装所有组件都需要的通用能力
 */
 class BasePlugin {
+    // 私有属性：外部+子类 均无法直接访问/修改
+    #options; //组件配置（只读）
+    #element = null; //组件根DOM元素
+    #isInitialized  = false; //初始化状态
+    #eventHandlers = new Map(); //事件处理器映射（自动清理内存）
     // 构造函数:接受配置，初始化默认值
     constructor(options = {}) {
         // 合并默认配置和用户配置（原型链上的默认值会被实例配置覆盖）
-        this.options = {
+        this.#options = {
             ...this.getDefaultOptions(),//子类可以重写这个方法提供的默认配置
             ...options
         };
-        this.element = null;//组件的DOM元素
-        this.isIninitalized = false;//标记是否已初始化
-        // 存储所有事件处理器，用于销毁时自动解绑（解决内存泄露）
-        this._eventHandlers = new Map();
     }
-
+    // 提供一个受包含的getter来让子类访问options
+    get options() {
+        return this.#options;
+    }
+    // 同样为element提供getter
+    get element() {
+        return this.#element;
+    }
+    get isInitialized(){
+        return this.#isInitialized;
+    }
     //获取默认配置（留空，让子类去实现）
     getDefaultOptions() {
         return {};
     }
-
-    //初始化入口（模板方法模式：定义执行流程）
-    init() {
-        if (this.isIninitalized) return;//防止重复初始化
-        this.render();//渲染DOM事件
-        this.bindEvents();//绑定事件
-        this.isIninitalized = true;
-        return this; //支持链式调用
-    }
-
-    //渲染DOM（抽象方法：子类必须重写）
     render() {
         throw new Error("子类必须实现render()方法");
     }
-
     //绑定事件（钩子方法：子类可以选择是否拓展）
     bindEvents() {
         // 基类可以留空，或者绑定一些通用事件
     }
-
+    //初始化入口（模板方法模式：定义执行流程）
+    init() {
+        if (this.#isInitialized) return;//防止重复初始化
+        this.#render();//渲染DOM事件
+        this.#bindEvents();//绑定事件
+        this.#isInitialized = true;
+        return this; //支持链式调用
+    }
+    //将render和bindEvents变成私有，因为它们不应该被外部直接调用
+    #render() {
+        const el = this.render();
+        // 子类实现的render返回DOM元素
+        if (!(el instanceof HTMLElement)) {
+            throw new Error("render()方法必须返回一个HTMLElement实例");
+        }
+        this.#element = el;
+        const container = this.options.container || document.body;
+        container.appendChild(this.#element);
+    }
+    #bindEvents() {
+        // 调用了子类可能拓展的bindEvents
+        this.bindEvents();
+    }
     // 统一事件绑定方法，自动记录处理器
-    _addEventListener(element,event,handler){
+    _addEventListener(element, event, handler) {
         const boundHandler = handler.bind(this);
-        element.addEventListener(event,boundHandler);
-
-        if (!this._eventHandlers.has(element)) {
-            this._eventHandlers.set(element,new Map());
+        element.addEventListener(event, boundHandler);
+        if (!this.#eventHandlers.has(element)) {
+            this.#eventHandlers.set(element, new Map());
         }
-        this._eventHandlers.get(element).set(event,boundHandler);
+        const eventMap = this.#eventHandlers.get(element);
+        let handlers = eventMap.get(event);
+        if (!Array.isArray(handlers)) {
+            handlers = [];
+            eventMap.set(event,handlers);
+        }
+        handlers.push(boundHandler);
+        return boundHandler;
     }
-    _removeEventListener(element,event){
-        if (!this._eventHandlers.has(element)) return;
-        const eventMap = this._eventHandlers.get(element);
+    _removeEventListener(element,event,handler){
+        if (!this.#eventHandlers.has(element)) return;
+        const eventMap = this.#eventHandlers.get(element);
         if (!eventMap.has(event)) return;
-
-        const handler = eventMap.get(event);
-        element.removeEventListener(event,handler);
-        // 从Map中删除记录
-        eventMap.delete(event);
-        // 清空空的元素条目
-        if (eventMap.size === 0) {
-            this._eventHandlers.delete(element);
+        const handlers = eventMap.get(event);
+        const index = handlers.indexOf(handler);
+        if (index > -1) {
+            element.removeEventListener(event,handlers[index]);
+            handlers.splice(index,1);
+            if (handlers.length === 0) {
+                eventMap.delete(event);
+            }
+            if (eventMap.size === 0) {
+                this.#eventHandlers.delete(element);
+            }
         }
     }
+    // ---以下是公共API---
     //显示组件
     show() {
-        if (!this.isIninitalized) this.init();
-        if (this.element) {
-            this.element.style.display = 'flex';
-        }
+        if (!this.#isInitialized) this.init();
+        if (this.#element) this.#element.style.display = 'flex';
+        return this; //支持链式调用
     }
-
     // 隐藏组件
     hide() {
-        if (this.element) {
-            this.element.style.display = 'none';
-        }
-    }
-
-    //销毁组件（重要：清理DOM和事件，防止内存泄露）
-    destroy() {
-        if (this.element) {
-            // 先解绑所有事件
-            this._eventHandlers.forEach((eventMap, element) => {
-                eventMap.forEach((handler, event) => {
-                    element.removeEventListener(event, handler);
-                })
-            });
-            this._eventHandlers.clear();
-
-            // 移除DOM
-            this.element.remove();
-            this.element = null;
-        }
-        this.isIninitalized = false;
-        // 清除单例引用（如果时单例模型）
-        if (this.constructor.instance) {
-            this.constructor.instance = null;
-        }
+        if (this.#element) this.#element.style.display = 'none';
         return this;
     }
+    //销毁组件（重要：清理DOM和事件，防止内存泄露）
+    destroy() {
+        if (this.#element) {
+            // 先解绑所有事件
+            this.#eventHandlers.forEach((eventMap, element) => {
+                eventMap.forEach((handlers, event) => {
+                    handlers.forEach((handler) =>{
+                        element.removeEventListener(event,handler);
+                    })
+                })
+            });
+            this.#eventHandlers.clear();
+            this.#element.remove();
+            this.#element = null;
+        }
+        this.#isInitialized = false;
+        // 清除单例引用（如果时单例模型）
+        if (this.constructor.instance === this) {
+            this.constructor.instance = null;
+        }
+    }
 }
-
 /*
-2.定义弹窗类MOdal（继承BasePlugin）
+2.定义弹窗类Modal（继承BasePlugin）
 作用：实现弹窗特有的默认配置
 */
 class Modal extends BasePlugin {
+    // 拖拽相关的内部状态，全部设为私有
+    #dragStartX = 0;
+    #dragStartY = 0;
+    #modalStartX = 0;
+    #modalStartY = 0;
+    #moveHandler = null;
+    #upHandler = null;
+    #draggingContent = null;
     //单例模式：防止重复创建多个弹窗实例
     static instance = null;
-
-    static getInstance(options ={}) {
+    static getInstance(options = {}) {
         if (!Modal.instance) {
             Modal.instance = new Modal(options);
+        }else{
+            Object.assign(Modal.instance.options,options);
+            Modal.instance.updateContent(options);
         }
         return Modal.instance;
     }
-
     // 重写：提供弹窗的默认配置
     getDefaultOptions() {
         return {
@@ -125,27 +159,20 @@ class Modal extends BasePlugin {
             content: "这是弹窗内容",
             zIndex: 999,
             closeOnEsc: true,//按esc关闭
-            closeOnOverlay:true,//点击遮罩层关闭
+            closeOnOverlay: true,//点击遮罩层关闭
             draggable: true,//允许拖拽
             onConfirm: () => { },//确认回调
             onCancel: () => { }, //取消回调
         };
     }
-
     //重写：实现弹窗的DOM渲染
     render() {
-
-        //防止重复渲染
-        if (this.element) return;
-
-        // 创建弹窗的DOM结构
-        this.element = document.createElement('div');
-        this.element.className = 'modal-overlay';
-        this.element.style.display = 'none'; //默认隐藏
-        this.element.style.zIndex = this.options.zIndex;
-
+        const el = document.createElement('div');
+        el.className = 'modal-overlay';
+        el.style.display = 'none'; //默认隐藏
+        el.style.zIndex = this.options.zIndex;
         //填充内容（使用模板字符串）
-        this.element.innerHTML = `
+        el.innerHTML = `
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>${this.options.title}</h3>
@@ -159,108 +186,121 @@ class Modal extends BasePlugin {
                             <button class="modal-confirm">确认</button>
                         </div>
                     </div>`;
-
-        //挂载到页面
-        document.body.appendChild(this.element);
+        // 返回创建的元素
+        this.#setContent(el);
+        return el;
     }
-
+    // 安全设置
+    #setContent(el){
+        if(!el) return;
+        const titleEl = el.querySelector('.modal-header h3');
+        if(titleEl) titleEl.textContent = this.options.title;
+        const contentEl = el.querySelector('.modal-body p');
+        if(contentEl) contentEl.textContent = this.options.content;    
+    }
+    //更新内容方法
+    updateContent(options = {}){
+        Object.assign(this.options,options);
+        if (this.element) {
+            this.#setContent(this.element);
+        }else if( this.isInitialized) {
+            this.init();
+        }
+  
+        return this;
+    }
     // 拓展：绑定弹窗特有的事件
     bindEvents() {
-        // 先调用基类的bindEvents(如果基类有通用事件的话)
-        super.bindEvents();
         const header = this.element.querySelector('.modal-header');
         const closeBtn = this.element.querySelector('.modal-close');
         const confirmBtn = this.element.querySelector('.modal-confirm');
         const cancelBtn = this.element.querySelector('.modal-cancel');
-
         //关闭按钮事件
-        this._addEventListener(closeBtn,'click',this._handleCancel);
-
+        this._addEventListener(closeBtn, 'click', this.#handleCancel);
         // 确认/取消按钮事件
-        this._addEventListener(confirmBtn,'click',this._handleConfirm);
-        this._addEventListener(cancelBtn,'click',this._handleCancel);
+        this._addEventListener(confirmBtn, 'click', this.#handleConfirm);
+        this._addEventListener(cancelBtn, 'click', this.#handleCancel);
         //点击遮罩层关闭
         if (this.options.closeOnOverlay) {
-            this._addEventListener(this.element,'click',this._handleOverlayClick);  
+            this._addEventListener(this.element, 'click', this.#handleOverlayClick);
         }
-        
         //ESC关闭
         if (this.options.closeOnEsc) {
-            this._addEventListener(document,'keydown',this._handleEscKey);
+            this._addEventListener(document, 'keydown', this.#handleEscKey);
         }
-
         // 拖拽功能
         if (this.options.draggable) {
-            this._addEventListener(header,'mousedown',this._onDragStart);
+            this._addEventListener(header, 'mousedown', this.#onDragStart);
         }
     }
-    _handleCancel(){
+    // 私有事件处理函数
+    #handleCancel() {
         this.options.onCancel();
         this.hide();
     }
-
-    _handleConfirm(){
+    #handleConfirm() {
         this.options.onConfirm();
         this.hide();
     }
-
-    _handleOverlayClick(e) {
-        if (e.target ===this.element) {
+    #handleOverlayClick(e) {
+        if (e.target === this.element) {
             this.hide();
         }
     }
-
-    _handleEscKey(e){
+    #handleEscKey(e) {
         if (e.key === 'Escape' && this.element.style.display !== 'none') {
             this.hide();
         }
     }
-
-    // 拖拽功能实现
-    _onDragStart(e){
-        const content = this.element.querySelector('.modal-content');
-        // 记录鼠标初始位置和弹窗参数位置
-        this._dragStartX = e.clientX;
-        this._dragStartY= e.clientY;
-        this._modalStartX = content.offsetLeft;
-        this._modalStartY = content.offsetTop;
-
-        //保存content引用，避免重复查询
-        this._draggingContent = content;
-        //绑定移动和松开事件到document(防止鼠标移出弹窗后失效)
-        // 先解绑之前可能存在的事件，防止重复绑定（关键）
-        this._removeEventListener(document,'mousemove');
-        this._removeEventListener(document,'mouseup');
-
-        this._addEventListener(document,'mousemove',this._onDragMove);
-        this._addEventListener(document,'mouseup',this._onDragEnd);
-
-        //只设置一次position,避免次移动都重复设置
-        content.style.position = 'absolute';
+    // ✅ 修复后的拖拽功能实现
+    #onDragStart(e) {
+        e.preventDefault();
+        // 记录鼠标初始位置和弹窗初始位置
+        this.#draggingContent = this.element.querySelector('.modal-content');
+        this.#dragStartX = e.clientX;
+        this.#dragStartY = e.clientY;
+        this.#modalStartX = this.#draggingContent.offsetLeft;
+        this.#modalStartY = this.#draggingContent.offsetTop;
+        // 提前绑定this，确保私有成员可访问
+        this.#moveHandler = this.#onDragMove.bind(this);
+        this.#upHandler = this.#onDragEnd.bind(this);
+        // ✅ 修复：mouseup绑定正确的upHandler
+        document.addEventListener('mousemove', this.#moveHandler);
+        document.addEventListener('mouseup', this.#upHandler);
+        // 鼠标移出窗口也能触发mouseup
+        document.addEventListener('mouseleave', this.#upHandler);
     }
-
-    _onDragMove(e) {
-        if (!this._draggingContent) return;
-
-        const content = this._draggingContent;
-        //  计算偏移量
-        const deltaX = e.clientX - this._dragStartX;
-        const deltaY = e.clientY - this._dragStartY;
-
-        //更新弹窗位置
-        content.style.position = 'absolute';
-        content.style.left = `${this._modalStartX + deltaX}px`;
-        content.style.top = `${this._modalStartY + deltaY}px`;
+    #onDragMove(e) {
+        if (!this.#draggingContent) return;
+        e.preventDefault();
+        // 计算偏移量
+        const deltaX = e.clientX - this.#dragStartX;
+        const deltaY = e.clientY - this.#dragStartY;
+        // ✅ 修复：使用弹窗初始位置计算新坐标
+        let newLeft = this.#modalStartX + deltaX;
+        let newTop = this.#modalStartY + deltaY;
+        // ✅ 修复：拼写错误，正确获取弹窗高度
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        const modalWidth = this.#draggingContent.offsetWidth;
+        const modalHeight = this.#draggingContent.offsetHeight;
+        // 边界限制，防止拖出屏幕
+        newLeft = Math.max(0, Math.min(newLeft, windowWidth - modalWidth));
+        newTop = Math.max(0, Math.min(newTop, windowHeight - modalHeight));
+        // 应用新位置
+        this.#draggingContent.style.left = `${newLeft}px`;
+        this.#draggingContent.style.top = `${newTop}px`;
     }
-    _onDragEnd() {
-        //移除移动和思考事件
-        //使用基类统一方法真正解绑事件
-        this._removeEventListener(document,'mousemove');
-        this._removeEventListener(document,'mouseup');
-        delete this._draggingContent;
+    #onDragEnd(e) {
+        document.removeEventListener('mousemove', this.#moveHandler);
+        document.removeEventListener('mouseup', this.#upHandler);
+        document.removeEventListener('mouseleave', this.#upHandler);
+        // 重置拖拽状态
+        this.#draggingContent = null;
+        this.#moveHandler = null;
+        this.#upHandler = null;
     }
 }
-
 /*
 3.使用示例
 */
@@ -277,7 +317,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('用户点击了取消');
         }
     });
-
     // 2.点击按钮打开弹窗
     document.getElementById('openModal').addEventListener('click', () => {
         myModal.show();

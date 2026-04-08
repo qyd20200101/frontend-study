@@ -1,86 +1,96 @@
-.modal-overlay{
+/* 弹窗遮罩层 */
+.modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 999;
 }
 
-.modal-content{
+/* 弹窗内容（必须设置position，否则left/top无效） */
+.modal-content {
+    position: absolute; /* 核心：拖拽依赖绝对定位 */
     background: white;
-    text-align: center;
-    min-width: 350px;
+    border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    overflow: hidden; /*裁剪圆角*/
+    min-width: 400px;
+    max-width: 90%;
 }
 
 /* 弹窗头部（拖拽区域） */
-.modal-header{
+.modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
     border-bottom: 1px solid #eee;
-    background: #fafafa;
-    cursor: move;
-    user-select: none;/*防止拖拽式选中文本*/
+    cursor: move; /* 显示拖拽光标 */
+    user-select: none; /* 防止拖拽时选中文本 */
 }
 
-.modal-header h3{
+.modal-header h3 {
     margin: 0;
-    font-size: 16px;
-    font-weight: 500;
+    font-size: 18px;
+    font-weight: 600;
 }
 
-/* 关闭按钮 */
-.modal-close{
+.modal-close {
     background: none;
     border: none;
-    font-style: 22px;
-    line-height: 1;
+    font-size: 24px;
     cursor: pointer;
     color: #999;
     padding: 0;
-    transition: color 0.2s;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.modal-close:hover{
-    padding: 24px 20px;
-    font-size: 14px;
+.modal-close:hover {
     color: #333;
 }
-.modal-buttons{
+
+/* 弹窗主体 */
+.modal-body {
+    padding: 20px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* 弹窗按钮组 */
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
     padding: 16px 20px;
     border-top: 1px solid #eee;
-    text-align: right;
 }
-.modal-buttons button{
-    margin-left: 10px;
-    padding: 7px 18px;
-    border: none;
+
+.modal-cancel, .modal-confirm {
+    padding: 8px 16px;
     border-radius: 4px;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
     font-size: 14px;
-    transition: background 0.2s;
 }
 
-.modal-cancel{
-    background: #f5f5f5;
-    color: #333;
-}
-
-.modal-cancel:hover{
-    background: #e8e8e8;
-}
-
-.modal-confirm{
+.modal-confirm {
     background: #1677ff;
     color: white;
+    border-color: #1677ff;
 }
-.modal-confirm:hover{
+
+.modal-confirm:hover {
     background: #4096ff;
+}
+
+.modal-cancel:hover {
+    background: #f5f5f5;
 }
