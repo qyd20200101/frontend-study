@@ -38,3 +38,31 @@ dist-ssr
 .parcel-cache
 .eslintcache
 .stylelintcache
+
+# 测试覆盖率报告
+coverage
+*.lcov
+
+# Vite 5+ 专属缓存目录
+.vite
+
+# 包管理器临时文件
+.npmrc.local
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnpm-store
+
+# 通用临时文件
+*.tmp
+*.bak
+*.swp
+*~
+
+# TypeScript 声明文件缓存
+*.tsbuildinfo
+
+# Storybook 构建产物
+storybook-static
