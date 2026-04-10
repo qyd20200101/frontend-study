@@ -2,13 +2,15 @@
 import UserInfoCard from './components/UserInfoCard.vue'
 import OrderDashboard from './components/OrderDashboard.vue';
 import   DataManager  from "./components/DataManager.vue";
+import SmartSearch  from "./components/SmartSearch.vue";
 </script>
 
 <template>
   <main>
     <!-- <UserInfoCard></UserInfoCard> -->
     <!-- <OrderDashboard></OrderDashboard> -->
-     <DataManager></DataManager >
+     <!-- <DataManager></DataManager > -->
+        <SmartSearch></SmartSearch>
   </main>
 </template>
 <style scoped>
