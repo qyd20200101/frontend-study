@@ -9,8 +9,8 @@ import SmartSearch  from "./components/SmartSearch.vue";
   <main>
     <!-- <UserInfoCard></UserInfoCard> -->
     <!-- <OrderDashboard></OrderDashboard> -->
-     <!-- <DataManager></DataManager > -->
-        <SmartSearch></SmartSearch>
+     <DataManager></DataManager >
+        <!-- <SmartSearch></SmartSearch> -->
   </main>
 </template>
 <style scoped>

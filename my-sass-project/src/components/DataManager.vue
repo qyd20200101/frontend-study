@@ -1,6 +1,15 @@
 <script setup lang="ts">
+/*
+处理从后端获取的列表数据使用ref,优势：
+1.重新赋值的灵活性,reactive定义的响应式对象不能直接被重新赋值，会丢失响应性
+后端返回全新数组，必须用splice或push修改原数组，ref只需要rawdata.value = newArray
+2.心智模型统一，统一使用ref减少编写.value的成本，让代码风格一致
+3.类型追踪,ref在ts的类型推导清晰，结合接口定义，完美规避异步赋值地类型错误
+*/ 
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { debounce, deepClone, mySum } from '../utils/engine';
+
+import request from "../utils/request";
 
 // 1.数据定义(模拟项目数据)
 interface Project {
@@ -10,18 +19,51 @@ interface Project {
     status: 'active' | 'archived';
     category: string;
 }
-
-const rawData = reactive<Project[]>([
-    { id: 1, name: '西安高新区智慧路灯项目', budget: 1200000, status: 'active', category: 'IoT' },
-    { id: 2, name: '软新园区物业管理系统', budget: 450000, status: 'active', category: 'Software' },
-    { id: 3, name: '秦岭生态监测大屏', budget: 800000, status: 'archived', category: 'Visual' },
-]);
-
+interface DashboardStatus{
+    totalProjects: number;
+    activeBudget:number;
+}
+// const rawData = reactive<Project[]>([
+//     { id: 1, name: '西安高新区智慧路灯项目', budget: 1200000, status: 'active', category: 'IoT' },
+//     { id: 2, name: '软新园区物业管理系统', budget: 450000, status: 'active', category: 'Software' },
+//     { id: 3, name: '秦岭生态监测大屏', budget: 800000, status: 'archived', category: 'Visual' },
+// ]);
+const rawData = ref<Project[]>([]);
+const categories = ref<string[]>([]);
+const stats = ref<DashboardStatus | null>(null);
 const isLoading = ref(false);
 const searchQuery = ref('');
 const displayData = ref<Project[]>([]);
 const editingItem = ref<Project | null>(null);
+const errorMessages = ref(''); 
+// 核心重构：页面初始化逻辑
+const initPageData =async () =>{
+    isLoading.value = true;
+    errorMessages.value = '';
 
+    try {
+        // 场景：我们需要同时获取项目列表，分类字典和概括数据
+        // 使用promise.all并发请求，耗时取决于最慢的那个，而不是累加
+        const [projectRes,categoriesRes,statsRes] = await Promise.all([
+            ( request<Project[]>({url: '/projects'})).catch(() =>[]),
+            ( request<string[]>({url: '/categories'})).catch(() =>[]),
+            ( request<DashboardStatus>({url: '/status'}))
+        ]);
+
+        rawData.value = projectRes;
+        categories.value = categoriesRes;
+        stats.value = statsRes; 
+
+        // 初始化显示数据
+        displayData.value = [...rawData.value];
+    } catch (error) {
+        // 核心接口失败的处理逻辑
+        errorMessages.value = '系统核心数据加载失败,请类型管理员或刷新重试';
+        console.error('Init Error',error);
+    }finally{
+        isLoading.value = false;
+    }
+}
 // 2.核心业务逻辑(computed)
 //使用我们手写的mySum逻辑计算总预算
 const totalBudget = computed(() => mySum(displayData.value, 'budget'));
@@ -31,7 +73,7 @@ const handleSearch = debounce(() => {
     isLoading.value = true;
     // 模拟API请求延迟
     setTimeout(() => {
-        displayData.value = rawData.filter(p =>
+        displayData.value = rawData.value.filter(p =>
             p.name.includes(searchQuery.value) || p.category.includes(searchQuery.value)
         );
         isLoading.value = false;
@@ -53,15 +95,15 @@ const cancelEdit = () => {
 
 const saveEdit = () => {
     if (!editingItem.value) return;
-    const index = rawData.findIndex(p => p.id === editingItem.value?.id);
+    const index = rawData.value.findIndex(p => p.id === editingItem.value?.id);
     if (index !== -1) {
-        rawData[index] = editingItem.value; //保存修改
+        rawData.value[index] = editingItem.value; //保存修改
         handleSearch();//刷新视图
     }
     editingItem.value = null;
 };
 
-onMounted(() => handleSearch());
+onMounted(() => initPageData());
 </script>
 <template>
     <div class="manager-container">
