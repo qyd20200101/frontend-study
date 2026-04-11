@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BaseModal from "./BaseModal.vue";
 /*
 处理从后端获取的列表数据使用ref,优势：
 1.重新赋值的灵活性,reactive定义的响应式对象不能直接被重新赋值，会丢失响应性
@@ -36,6 +37,7 @@ const searchQuery = ref('');
 const displayData = ref<Project[]>([]);
 const editingItem = ref<Project | null>(null);
 const errorMessages = ref(''); 
+const isModalVisible = ref(false);
 // 核心重构：页面初始化逻辑
 const initPageData =async () =>{
     isLoading.value = true;
@@ -103,6 +105,14 @@ const saveEdit = () => {
     editingItem.value = null;
 };
 
+const handleOpenModal = () =>{
+    isModalVisible.value = true;
+};
+
+const onModalConfirm = () =>{
+    console.log('用户在子组件点了确认,父组件执行保存逻辑');
+    isModalVisible.value = false;
+}
 onMounted(() => initPageData());
 </script>
 <template>
@@ -164,6 +174,19 @@ onMounted(() => initPageData());
                 </div>
             </div>
         </div>
+    </div>
+    <div>
+        <button @click="handleOpenModal">新增项目</button>
+        <!-- 自定义使用弹窗组件 -->
+         <!-- v-model="isModalVisible会自动对应modelValue属性和update:modelValue事件" -->
+          <BaseModal v-model="isModalVisible"
+          title="新增资产项目"
+          @confirm="onModalConfirm">
+        </BaseModal>
+        <!-- 插槽内容：可以是复杂的表单 -->
+         <div class="form-group">
+            <input placeholder="请输入项目名称">
+         </div>
     </div>
 </template>
 <style scoped>
