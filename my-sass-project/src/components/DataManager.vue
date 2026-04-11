@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import BaseModal from "./BaseModal.vue";
+
 /*
 处理从后端获取的列表数据使用ref,优势：
 1.重新赋值的灵活性,reactive定义的响应式对象不能直接被重新赋值，会丢失响应性
@@ -9,7 +9,8 @@ import BaseModal from "./BaseModal.vue";
 */ 
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { debounce, deepClone, mySum } from '../utils/engine';
-
+import BaseModal from "./BaseModal.vue";
+import TreeItem from "./TreeItem.vue";
 import request from "../utils/request";
 
 // 1.数据定义(模拟项目数据)
@@ -24,11 +25,12 @@ interface DashboardStatus{
     totalProjects: number;
     activeBudget:number;
 }
-// const rawData = reactive<Project[]>([
-//     { id: 1, name: '西安高新区智慧路灯项目', budget: 1200000, status: 'active', category: 'IoT' },
-//     { id: 2, name: '软新园区物业管理系统', budget: 450000, status: 'active', category: 'Software' },
-//     { id: 3, name: '秦岭生态监测大屏', budget: 800000, status: 'archived', category: 'Visual' },
-// ]);
+interface DeptNode{
+    id:number;
+    pid:number;
+    name:string;
+    children?: DeptNode[];
+}
 const rawData = ref<Project[]>([]);
 const categories = ref<string[]>([]);
 const stats = ref<DashboardStatus | null>(null);
@@ -38,7 +40,12 @@ const displayData = ref<Project[]>([]);
 const editingItem = ref<Project | null>(null);
 const errorMessages = ref(''); 
 const isModalVisible = ref(false);
-// 核心重构：页面初始化逻辑
+
+//响应式状态
+const treeData = ref<DeptNode[]>([]);
+const isLoadingTree = ref(false);
+
+// 1.核心重构：页面初始化逻辑
 const initPageData =async () =>{
     isLoading.value = true;
     errorMessages.value = '';
@@ -81,11 +88,43 @@ const handleSearch = debounce(() => {
         isLoading.value = false;
     }, 500);
 }, 400);
+// 4.核心算法:扁平转树形
+/*
+为什么要前端自己转化数据：
+1.数据库友好:数据库存储白牛皮数据,如果再后端查询无限层级的树，
+需要复杂的递归查询或存储过程，对数据库性能消耗很大
+2.数据灵活性：前端拿到扁平数据，可以根据需求灵活处理，不同场景展现
+3.计算下移：vue3配合优化客户端性能，处理几千条数据的树形转化只需要几毫秒，
+将计算压力从服务器下移到客户端，是高并发架构中场景的优化策略
+4.封装的arrToTree使用map映射，时间复杂度o(n)
+*/ 
+const arrToTree = (items: DeptNode[]):DeptNode[] =>{
+    const result : DeptNode[] = [];
+    const itemMap: Record<number,DeptNode> = {};
 
+    for (const item of items) {
+        itemMap[item.id] = {...item,children: []};
+    }
+
+    for (const item of items) {
+        const id = item.id;
+        const pid = item.pid;
+        const treeItem = itemMap[id];
+
+        if (pid === 0) {
+            result.push(treeItem);
+        }else{
+            if (itemMap[pid]) {
+                itemMap[pid].children?.push(treeItem);
+            }
+        }
+    }
+    return result;
+}
 // 监听搜索词变化
 watch(searchQuery, () => handleSearch());
 
-// 4.编辑与深拷贝(数据安全)
+// 编辑与深拷贝(数据安全)
 const startEdit = (item: Project) => {
     // 关键点:使用深拷贝,编辑时不会影响原表格数据
     editingItem.value = deepClone(item);
@@ -94,7 +133,19 @@ const startEdit = (item: Project) => {
 const cancelEdit = () => {
     editingItem.value = null;//直接丢弃副本,原数据保持不变
 };
-
+//初始化加载数据
+const initTreeData = async() =>{
+    isLoadingTree.value = true;
+    try {
+        const res = await request<DeptNode[]>({url:'/departments'});
+        //调用算法后转化后再赋值
+        treeData.value = arrToTree(res);
+    } catch (error) {
+        console.error('加载组织架构失败',error);
+    }finally{
+        isLoadingTree.value = false;
+    }
+}
 const saveEdit = () => {
     if (!editingItem.value) return;
     const index = rawData.value.findIndex(p => p.id === editingItem.value?.id);
@@ -113,7 +164,10 @@ const onModalConfirm = () =>{
     console.log('用户在子组件点了确认,父组件执行保存逻辑');
     isModalVisible.value = false;
 }
-onMounted(() => initPageData());
+onMounted(() => {
+    initPageData();
+    initTreeData();
+});
 </script>
 <template>
     <div class="manager-container">
@@ -188,6 +242,20 @@ onMounted(() => initPageData());
             <input placeholder="请输入项目名称">
          </div>
     </div>
+     <div class="tree-panel">
+       <h3>XX集团组织架构（4级深度测试）</h3>
+       <div v-if="isLoadingTree">加载架构中...</div>
+
+       <!-- 渲染根列表 -->
+        <div v-else class="tree-root">
+            <TreeItem
+            v-for="root in treeData"
+            :key="root.id"
+            :node="root"
+            @node-click="(node) =>console.log('点击了：',node.name)"
+            />
+        </div>
+      </div>
 </template>
 <style scoped>
 .manager-container {
@@ -287,5 +355,16 @@ onMounted(() => initPageData());
     border: none;
     padding: 8px;
     border-radius: 4px;
+}
+.tree-pamel{
+    padding: 20px;
+    margin-top: 20px;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,.1);
+    border-radius: 8px;
+}
+.tree-root{
+    padding-top: 10px;
+    border-top: 1px solid #eee;
 }
 </style>

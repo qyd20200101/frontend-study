@@ -14,7 +14,21 @@ const projects = [
     { id: 3, name: '秦岭生态监测大屏', budget: 800000, status: 'archived', category: 'Visual' },
     { id: 4, name: '城墙数字化巡检', budget: 300000, status: 'active', category: 'Software' }
 ];
-
+// 模拟组织架构数据（扁平结构）
+const departments =[
+    { id: 1, pid: 0, name: '西安某集团总部' },
+    { id: 2, pid: 1, name: '行政管理中心' },
+    { id: 3, pid: 1, name: '研发技术中心' },
+    { id: 4, pid: 1, name: '西北市场部' },
+    { id: 5, pid: 3, name: '前端开发部' },
+    { id: 6, pid: 3, name: '后端开发部' },
+    { id: 7, pid: 3, name: '测试自动化组' },
+    { id: 8, pid: 5, name: 'Vue项目组' },
+    { id: 9, pid: 5, name: 'React项目组' },
+    { id: 10, pid: 4, name: '西安分部' },
+    { id: 11, pid: 4, name: '兰州办事处' },
+    { id: 12, pid: 10, name: '高新区分队' }
+];
 const categories = ['IoT','Software','Visual','Security'];
 
 // 路由定义（匹配前端request.ts的逻辑）
@@ -51,6 +65,15 @@ app.get('/api/status',(req,res) =>{
             totalProjects: projects.length,
             activeBudget: activeBudget
         },
+        message: 'success'
+    });
+});
+
+// 获取组织架构
+app.get('/api/departments',(req,res) =>{
+    res.json({
+        code:200,
+        data: departments,
         message: 'success'
     });
 });
