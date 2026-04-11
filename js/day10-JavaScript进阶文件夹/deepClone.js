@@ -85,23 +85,56 @@
 //     return result;
 // }
 //第五遍
-function deepClone(target, map = new WeakMap()) {
-    // 判断基本类型或null
-    if (typeof target !== 'object' || target === null) {
+// function deepClone(target, map = new WeakMap()) {
+//     // 判断基本类型或null
+//     if (typeof target !== 'object' || target === null) {
+//         return target;
+//     }
+//     // 解决循环引用：如果对象已存在map中，直接返回不再递归
+//     if (map.has(target)) {
+//         // 只传入target一个参数
+//         return map.get(target);
+//     }
+//     // 初始化克隆结果或对象
+//     const result = Array.isArray(target)? []: {};
+//     //将当前对象存入weakmap
+//     map.set(target,result);
+//     //递归拷贝属性，reflect.ownkeys可以拿到不可枚举属性和Symbo属性
+//    Reflect.ownKeys(target).forEach(key =>{
+//     result[key] = deepClone(target[key],map);
+//    })
+//    return result;
+// }
+function deepClone(target ,map = new WeakMap()) {
+    if (target !== 'object' || target ===null) {
         return target;
     }
-    // 解决循环引用：如果对象已存在map中，直接返回不再递归
     if (map.has(target)) {
-        // 只传入target一个参数
+        return map.set(target);
+    }
+
+    const result = Array.isArray(target)? []:{};
+    map.set(target,result);
+    
+    Reflect.ownKeys(target).forEach(key =>{
+        result[key]= deepClone(target[key],map)
+    })
+    return result;
+}
+function deepClone(target,map = new WeakMap()) {
+    if (target !== 'object' ||target === null) {
+        return target;
+    }
+
+    if (map.has(target)) {
         return map.get(target);
     }
-    // 初始化克隆结果或对象
-    const result = Array.isArray(target)? []: {};
-    //将当前对象存入weakmap
+
+    const result = Array.isArray(target)? [] : {};
+
     map.set(target,result);
-    //递归拷贝属性，reflect.ownkeys可以拿到不可枚举属性和Symbo属性
-   Reflect.ownKeys(target).forEach(key =>{
-    result[key] = deepClone(target[key],map);
-   })
-   return result;
+
+    Reflect.ownKeys.forEach(key =>{
+        result[key] = deepClone(target[key] ,map);
+    })
 }

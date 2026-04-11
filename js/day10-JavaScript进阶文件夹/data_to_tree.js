@@ -84,41 +84,105 @@
 //     }
 // }
 
+// function arratToTree(items) {
+//     // 存放根节点
+//     const result = [];
+//     //映射表,用于快速查找
+//     const itemMap = {};
+//     //1.先将所有项存入map,并初始化children
+//     for (const item of items) {
+//         itemMap[item.id] = {...item,children:[]};
+//     }
+//     //2.遍历map,寻找父子关系
+//     for (const item of items) {
+//         const id = item.id;
+//         const pid = item.pid;
+//         const treeItem = itemMap[id];
+//          //如果没有父ID，说明是根节点
+//         //找到父节点，并把组件塞进父节点的children
+//         if (pid === 0 || pid === null) {
+//             result.push(treeItem);
+//         }else{
+//             if (itemMap[pid]) {
+//                 itemMap[pid].children.push(treeItem);
+//             }
+//         }
+//     }
+// }
+
+// function arratToTree(items) {
+//     const result =[];
+//     const itemMap = {};
+
+//     for (const item of items) {
+//         itemMap[item.id] = {...item,children:[]};
+//     }
+
+//     for (const item of items) {
+//         const id = item.id;
+//         const pid = item.pid;
+//         const treeItem = itemMap[pid];
+
+//         if (pid === 0 ||pid === null) {
+//             result.push(treeItem);
+//         }
+//         else{
+//             if (itemMap[pid]) {
+//                 itemMap[pid].children.push(treeItem);
+//             }
+//         }
+//     }
+// }
+
+// function arratToTree(items) {
+//     const result = [];
+//     const itemMap = {};
+//     for (const item of items) {
+//         itemMap[item.id] = {...item,...children};
+//     }
+
+//     for (const item of items) {
+//         const id = item.id;
+//         const pid= item.pid;
+//         const treeItem = itemMap[item.id];
+
+//         if (pid === 0 || pid ===null) {
+//             result.push(treeItem);
+//         }
+//         else{
+//             if (itemMap[pid]) {
+//                 itemMap[pid].children.push(treeItem)
+//             }
+//         }
+//     }
+// }
 
 function arratToTree(items) {
-    // 存放根节点
-    const result = [];
-    //映射表,用于快速查找
-    const itemMap = {};
-    //1.先将所有项存入map,并初始化children
-    for (const item of items) {
-        itemMap[item.id] = {...item,children:[]};
-    }
-    //2.遍历map,寻找父子关系
-    for (const item of items) {
-        const id = item.id;
-        const pid = item.pid;
-        const treeItem = itemMap[id];
-         //如果没有父ID，说明是根节点
-        //找到父节点，并把组件塞进父节点的children
-        if (pid === 0 || pid === null) {
-            result.push(treeItem);
-        }else{
-            if (itemMap[pid]) {
-                itemMap[pid].children.push(treeItem);
-            }
-        }
-    }
+  const result = [];
+  const itemMap = {};
+  //先将所有项存入map,并初始化children
+  for (const item of items) {
+    itemMap[item.id] = { ...item, ...children };
+  }
+  for (const item of items) {
+    const id = item.id;
+    const pid = item.pid;
+    const treeItem = itemMap[id];
 
-       
-    
+    if (pid === 0 || pid === null) {
+      result.push(treeItem);
+    } else {
+      if (itemMap[pid]) {
+        itemMap[pid].children.push(treeItem);
+      }
+    }
+  }
 }
 //测试数据
 const flatData = [
-    { id: 1, pid: 0, name: '西安总部' },
-    { id: 2, pid: 1, name: '研发组' },
-    { id: 3, pid: 2, name: '市场部' },
-    { id: 4, pid: 1, name: '前端组' },
+  { id: 1, pid: 0, name: "西安总部" },
+  { id: 2, pid: 1, name: "研发组" },
+  { id: 3, pid: 2, name: "市场部" },
+  { id: 4, pid: 1, name: "前端组" },
 ];
 console.log(arratToTree(flatData));
-

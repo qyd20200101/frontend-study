@@ -14,6 +14,7 @@ const projects = [
     { id: 3, name: '秦岭生态监测大屏', budget: 800000, status: 'archived', category: 'Visual' },
     { id: 4, name: '城墙数字化巡检', budget: 300000, status: 'active', category: 'Software' }
 ];
+
 // 模拟组织架构数据（扁平结构）
 const departments =[
     { id: 1, pid: 0, name: '西安某集团总部' },
@@ -32,6 +33,27 @@ const departments =[
 const categories = ['IoT','Software','Visual','Security'];
 
 // 路由定义（匹配前端request.ts的逻辑）
+//模拟登录
+app.post('/api/login',(req,res) =>{
+    res.json({
+        code:200,
+        data:{token:'super_admin_token'},
+        message:'success'
+    })
+});
+
+//获取用户信息（包含角色）
+app.get('/api/user/info',(req,res) =>{
+    res.json({
+        code:200,
+        data:{
+            username:'张三',
+            avatar: 'http://xxx.jpg',
+            roles: ['admin']//关键：返回角色
+        },
+        message: 'success'
+    })
+});
 
 //1.获取项目列表
 app.get ('/api/projects',(req,res) =>{

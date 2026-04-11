@@ -19,19 +19,27 @@ interface TreeNode{
     name: string;
     children?: TreeNode[];
 }
-
+//接收树的一个节点
 const props = defineProps<{
+    //每一个TreeItem只渲染当前这一层数据(node)，
+    //如果Node有children就会再次调用自己
     node: TreeNode;
 }>();
-
+// 定义点击信号,用于版当前点击的节点对象传给父组件
 const emit = defineEmits(['node-click']);
 
 // 控制子树的展开/收起
+//树上的每一个节点都有自己独立的isOpen状态
 const isOpen = ref(false);
 const toggle = () =>{
+    //判断是否有子孙
+    //props.node.children?.length:可选操作链，
+    // children为undefined/null,会直接返回undefined
     if (props.node.children?.length) {
+        //自有有子节点时，从切换展开/收起状态
         isOpen.value = !isOpen.value;
     }
+    //无论有没有子节点，都向外发出我被点了的信号
     emit('node-click',props.node);
 };
 </script>
