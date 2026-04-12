@@ -23,4 +23,12 @@ export const getStatusApi = () =>{
         method: 'get'
     } as any);
 };
+//新增/更新项目接口
+export const updateProjectApi = (data:any) =>{
+    return request({
+        url: '/api/projects/update',
+        method: 'post',
+        data //将修改后的副本传给后端
+    })
+}
 

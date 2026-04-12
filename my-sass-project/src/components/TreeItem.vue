@@ -14,8 +14,17 @@ import { ref } from 'vue';
 4.规范化：使用ts定义treenode接口，确保每一层递归的数据结构都是稳健的
 */ 
 
-interface TreeNode{
+
+/*
+TS any类型问题:
+解决办法：(类型复用)
+1.定义源头：通过export，否则父组件无法复用此类型
+2.契约同步：在父组件datamanager通过import type引入该类型
+3.强类型约束：处理事件回调时，显示为参数标注类型
+*/ 
+export interface TreeNode{
     id: number;
+    pid: number;
     name: string;
     children?: TreeNode[];
 }
@@ -55,7 +64,7 @@ const toggle = () =>{
         <!-- 递归调用点：如果展开且有子节点，就渲染自己 -->
          <ul v-if="isOpen && node.children?.length" class="children">
             <li v-for="child in node.children" :key="child.id">
-                <TreeItem :node="child" @node-click="(n) =>emit('node-click',n)"></TreeItem>
+                <TreeItem :node="child" @node-click="(n:TreeNode) =>emit('node-click',n)"></TreeItem>
             </li>
          </ul>
     </div>
@@ -79,7 +88,7 @@ const toggle = () =>{
     padding-left: 10px;
     border-left: 1px dashed #000;
 }
-.empty-icon{
+.empt-icon{
     display: inline-block;
     width: 14px;
 }

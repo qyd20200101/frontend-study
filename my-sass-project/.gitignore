@@ -66,3 +66,13 @@ coverage
 
 # Storybook 构建产物
 storybook-static
+# 核心：忽略所有 npm 依赖包（包含 nprogress）
+node_modules/
+
+# 可选：忽略 npm/yarn 锁定文件（根据团队规范决定是否忽略）
+# package-lock.json
+# yarn.lock
+
+# 可选：忽略临时文件、日志等
+*.log
+.DS_Store

@@ -5,7 +5,10 @@ import router from "./router";
 import './router/guard';//关键：导入路由守卫
 import { createPinia } from 'pinia';
 
+const app = createApp(App);
 
-createApp(App).mount('#app')
-App.use(createPinia);
-App.use(router);
+// 在实例app上调用插件
+app.use(createPinia());
+app.use(router);
+
+app.mount('#app');

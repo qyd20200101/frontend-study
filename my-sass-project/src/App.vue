@@ -1,25 +1,20 @@
 <script setup lang="ts">
-import UserInfoCard from './components/UserInfoCard.vue'
-import OrderDashboard from './components/OrderDashboard.vue';
-import   DataManager  from "./components/DataManager.vue";
-import SmartSearch  from "./components/SmartSearch.vue";
-import { id } from 'element-plus/es/locale/index.mjs';
 </script>
 
 <template>
-  <main>
-    <!-- <UserInfoCard></UserInfoCard> -->
-    <!-- <OrderDashboard></OrderDashboard> -->
-     <!-- <SmartSearch></SmartSearch> -->
-     <DataManager></DataManager >  
-  </main>
+  <!-- router-view是路由的出口，匹配到的组件（Login,DataManager）都会渲染 -->
+  <router-view/>
 </template>
-<style scoped>
-  /* main {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background-color: #f0f2f5;
-} */
+<style>
+html,body, #app{
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f0f2f5;
+}
+#nprgress .bar{
+  background: #1890ff;
+}
 </style>
