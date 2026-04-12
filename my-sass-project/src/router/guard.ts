@@ -1,5 +1,5 @@
 import { useUserStore } from "../store/user";
-import  router, { asyncRouters }  from "../router/index";
+import router, { asyncRoutes } from "../router/index"; 
 import type { RouteRecordRaw } from "vue-router";
 import nProgress from "nprogress";
 import 'nprogress/nprogress.css';
@@ -39,19 +39,19 @@ export function generateAsyncRoutes(routes:RouteRecordRaw[],roles:string[]): Rou
 }
 
 // 核心算法：根据角色过滤动态路由
-function filterAsyncRoutes(routes: any[],roles:string[]){
-    const res: any[] = [];
-    routes.forEach(route =>{
-        const tmp = {...route};
-        // 如果路由meta中定义了roles,则检查用户是否拥有其中之一
-        if (tmp.meta&& tmp.meta.roles) {
-            if (roles.some(role => tmp.meta.roles.includes(role))) {
-                res.push(tmp);
-            }
-        }
-    });
-    return res;
-}
+// function filterAsyncRoutes(routes: any[],roles:string[]){
+//     const res: any[] = [];
+//     routes.forEach(route =>{
+//         const tmp = {...route};
+//         // 如果路由meta中定义了roles,则检查用户是否拥有其中之一
+//         if (tmp.meta&& tmp.meta.roles) {
+//             if (roles.some(role => tmp.meta.roles.includes(role))) {
+//                 res.push(tmp);
+//             }
+//         }
+//     });
+//     return res;
+// }
 router.beforeEach(async(to,from,next) =>{
     nProgress.start();//开启进度条
     //必须在钩子内部调用Store
@@ -68,12 +68,16 @@ router.beforeEach(async(to,from,next) =>{
                     const {roles} = await userStore.getUserInfo();
                     //根据角色生成动态路由
                     //假设generateAsyncRoutes是过滤函数
-                    const accessRoutes = filterAsyncRoutes(asyncRouters,roles);
+                    const accessRoutes = generateAsyncRoutes(asyncRoutes,roles);
 
                     //动态添加到路由表
                     accessRoutes.forEach(route => {
                         router.addRoute(route);
                     });
+                    router.addRoute({
+                        path: '/:pathMatch(.*)*',
+                        redirect: '/404'
+                    })
                     next({...to,replace:true});
                     // 确保动态路由已挂载完成
                 } catch (error) {
@@ -90,7 +94,7 @@ router.beforeEach(async(to,from,next) =>{
             next();
         }else{
             //否则跳到登录页
-            next(`login?redirect=${to.path}`)
+            next(`/login?redirect=${to.path}`)
         }
     }
 });
