@@ -44,3 +44,26 @@ export const getUserInfoApi = () =>{
         method: 'get'
     });
 };
+//系统用户类型定义
+export interface SystemUser{
+    id: number;
+    username: string;
+    role: string;
+    status: 'active'| 'disabled';
+    lastlogin: string;
+}
+//获取用户列表
+export const getUsersApi =() =>{
+    return request<SystemUser[]>({
+        url: '/users',
+        method: 'get'
+    });
+};
+//新增用户
+export const addUserApi = (data: Partial<SystemUser>) =>{
+    return request({
+        url: '/users',
+        method: 'post',
+        data
+    });
+};

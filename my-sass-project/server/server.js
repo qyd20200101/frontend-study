@@ -32,6 +32,13 @@ const departments =[
 ];
 const categories = ['IoT','Software','Visual','Security'];
 
+//模拟数据库
+const systemUsers = [
+    { id: 1, username: 'admin', role: '超级管理员', status: 'active', lastLogin: '2023-10-24 10:00' },
+    { id: 2, username: 'editor_zhang', role: '普通编辑', status: 'active', lastLogin: '2023-10-23 15:30' }
+];
+
+
 // 路由定义（匹配前端request.ts的逻辑）
 //模拟登录
 app.post('/api/login',(req,res) =>{
@@ -40,6 +47,30 @@ app.post('/api/login',(req,res) =>{
         data:{token:'super_admin_token'},
         message:'success'
     })
+});
+
+//获取用户列表接口
+app.get('/api/users',(req,res) =>{
+    res.json({
+        code:200,
+        data:systemUsers,
+        message: 'success'
+    });
+});
+// 新增用户接口
+app.post('/api/users', (req, res) => {
+    const newUser = {
+        id: systemUsers.length + 1,
+        ...req.body,
+        status: 'active',
+        lastLogin: '-'
+    };
+    systemUsers.unshift(newUser);
+    res.json({
+        code: 200,
+        data: newUser,
+        message: '用户创建成功'
+    });
 });
 
 //获取用户信息（包含角色）
@@ -55,7 +86,7 @@ app.get('/api/user/info',(req,res) =>{
     })
 });
 
-//1.获取项目列表
+//获取项目列表
 app.get ('/api/projects',(req,res) =>{
     setTimeout(() => {
         res.json({
@@ -66,7 +97,7 @@ app.get ('/api/projects',(req,res) =>{
     }, 800);//模拟网络延迟
 });
 
-//2.获取分类字典
+//获取分类字典
 app.get('/api/categories',(req,res) =>{
     res.json({
         code:200,
@@ -76,7 +107,7 @@ app.get('/api/categories',(req,res) =>{
 });
 
 
-//3.获取统计数据
+//获取统计数据
 app.get('/api/status',(req,res) =>{
     const activeBudget = projects
     .filter(p =>p.status === 'active')
