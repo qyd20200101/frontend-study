@@ -31,7 +31,6 @@ const departments =[
     { id: 12, pid: 10, name: '高新区分队' }
 ];
 const categories = ['IoT','Software','Visual','Security'];
-
 //模拟数据库
 const systemUsers = [
     { id: 1, username: 'admin', role: '超级管理员', status: 'active', lastLogin: '2023-10-24 10:00' },
@@ -59,19 +58,41 @@ app.get('/api/users',(req,res) =>{
 });
 // 新增用户接口
 app.post('/api/users', (req, res) => {
-    const newUser = {
-        id: systemUsers.length + 1,
-        ...req.body,
-        status: 'active',
-        lastLogin: '-'
-    };
-    systemUsers.unshift(newUser);
-    res.json({
-        code: 200,
-        data: newUser,
-        message: '用户创建成功'
-    });
+    try {
+        const { username } = req.body;
+
+        // 1. 简单校验
+        if (!username) {
+            return res.status(400).json({ code: 400, message: '用户名不能为空' });
+        }
+        // 用户名唯一性校验
+        const isExist = systemUsers.some(user => user.username === username);
+        if (isExist) {
+            return res.status(400).json({ code: 400, message: '用户名已存在' });
+        }
+        // 2. 创建新对象 (修正 Date.now 拼写)
+        const newUser = {
+            id: Date.now(), // ✅ 确保是 Date.now()
+            ...req.body,
+            status: 'active',
+            lastLogin: '-'
+        };
+
+        // 3. 【必须】存入模拟数据库
+        systemUsers.unshift(newUser);
+
+        // 4. 【必须】返回响应给前端
+        res.json({
+            code: 200,
+            data: newUser,
+            message: '用户创建成功'
+        });
+    } catch (error) {
+        // 如果这里报错，前端才会收到 500
+        res.status(500).json({ code: 500, message: '服务器内部错误' });
+    }
 });
+
 
 //获取用户信息（包含角色）
 app.get('/api/user/info',(req,res) =>{
@@ -84,6 +105,38 @@ app.get('/api/user/info',(req,res) =>{
         },
         message: 'success'
     })
+});
+
+//修改用户权限/信息
+app.post('/api/users/update',(req,res) =>{
+    const {id,role,username} = req.body;
+    const index = systemUsers.findIndex(u => u.id ===id);
+    if (index !== -1) {
+        systemUsers[index] = {...systemUsers[index],role,username};
+        res.json({code:200, data: true,message: '更新成功'});
+    } else {
+        res.status(404).json({code: 404,message: '用户不存在'});
+    }
+})
+
+//删除用户接口
+app.delete('/api/users/:id',(req,res) =>{
+    const {id} = req.params;
+    const initialLength = systemUsers.length;
+
+    //过滤掉匹配ID的用户
+    systemUsers = systemUsers.filter(u => u.id !== paraseInt(id));
+
+    if (systemUsers.length < initialLength) {
+        res.json({
+            code: 200,
+            message: '用户已成功从系统中移除'
+        })
+    }else{
+        res.status(404).json({
+            code:404,message: '未找到该用户'
+        })
+    }
 });
 
 //获取项目列表

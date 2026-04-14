@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref,computed } from "vue";
 import { loginApi,getUserInfoApi } from "../api/user";
+// import { resetRouter } from "../router/index";
 
 //使用Setup Store覆盖
 export const useUserStore = defineStore('user',() =>{
@@ -31,6 +32,8 @@ export const useUserStore = defineStore('user',() =>{
         roles.value =[];
         userInfo.value = null;
         localStorage.removeItem('token');
+        localStorage.clear()
+        // resetRouter();
     };
 
     return {token,roles,userInfo,isLogin,login,getUserInfo,logout};

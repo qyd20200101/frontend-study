@@ -67,3 +67,11 @@ export const addUserApi = (data: Partial<SystemUser>) =>{
         data
     });
 };
+export const deleteUserApi = (id:number) =>{
+    return request({
+        url: `/users/${id}`,
+        method: 'delete'
+    });
+}
+//更新用户
+export const updateUserApi = (data:SystemUser) => request({url: '/users/update',method: 'post',data});

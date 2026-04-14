@@ -44,7 +44,7 @@ const handleConfirm = () => {
 <template>
     <!-- 使用Vue内置的Transition增加高级感 -->
     <Transition name="fade">
-        <div v-if="modelValue" class="modal-mask" @click="handleClose">
+        <div v-if="modelValue" class="modal-mask" @click.self="handleClose">
             <div class="modal-container" :style="{ width: width || '450px' }">
                 <!-- 头部 -->
                 <div class="modal-header">
@@ -76,7 +76,7 @@ const handleConfirm = () => {
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 2000;
+    z-index: 1000;
 }
 .modal-container{
     padding: 20px;
@@ -104,6 +104,13 @@ const handleConfirm = () => {
     border: none;
     border-radius: 4px;
     cursor: pointer;
+}
+.btn-cancel,.btn-confirm{
+    padding: 6px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: .2s;
 }
 /* 动画效果 */
 .fade-enter-active, .fade-leave-active {

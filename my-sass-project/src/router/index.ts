@@ -1,5 +1,7 @@
 import { createRouter,createWebHistory,type RouteRecordRaw } from "vue-router";
-import  Layout  from "../layout/index.vue";
+// import  Layout  from "../layout/index.vue";
+//路由懒加载
+const Layout = () =>import('../layout/index.vue');
 
 //常量路由中增加一个对根路径的处理
 //1.静态路由：所有人都可以访问（登录,404）

@@ -1,119 +1,212 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
-import { getUsersApi,addUserApi,type SystemUser } from "../api/user";
-import  BaseModal  from "../components/BaseModal.vue";
+import { computed, onMounted, ref } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+//引入API
+import { getUsersApi, addUserApi, updateUserApi, deleteUserApi, type SystemUser } from "../api/user";
+//引入组件
+import BaseModal from "../components/BaseModal.vue";
+//引入核心Hook
+import { useForm } from "../hooks/useForm";
+
+
 
 //响应式状态
-const userLsit = ref<SystemUser[]>([]);
+const userList = ref<SystemUser[]>([]);
 const isLoading = ref(false);
-const isSaving = ref(false);
-const isModalOpen = ref(false);
+const searchQuery = ref('');
 
-//新增用户的表单数据
-const newUserForm = reactive({
-    username: '',
-    role: '普通编辑'
-});
 
 //初始化加载
-const ftechUsers = async() =>{
+const fetchUsers = async () => {
     isLoading.value = true;
     try {
         const data = await getUsersApi();
-        userLsit.value = data;
+        userList.value = data;
     } catch (error) {
         console.error('获取用户列表失败');
-    }finally{
-        isLoading.value = false; 
+    } finally {
+        isLoading.value = false;
     }
 }
 
-//执行新增保存
-const handleAddUser =async () =>{
-    if (!newUserForm.username) {
-        return alert('请输入用户名');
+//前端过滤：根据用户名即时筛选
+const filteredUsers = computed(() => {
+    return userList.value.filter(u => u.username.toLocaleLowerCase().includes(searchQuery.value.toLocaleLowerCase()))
+});
+
+//增/改表单逻辑
+const { formData: editingUser, isSaving, openForm, closeForm, submitForm } = useForm<SystemUser>(async (data) => {
+    if (data.id) {
+        await updateUserApi(data);
     }
-    isSaving.value = true;
-    try {
-        await addUserApi(newUserForm);
-        //保存成功后：关闭弹窗——>清空表单——>重新刷新列表
-        isModalOpen.value = false;
-        newUserForm.username = '';
-        ftechUsers();
-        alert('新增成功!');
-    } catch (error) {
-        alert('保存失败');
-    }finally{
-        isSaving.value = false;
+    else {
+        //简单判断查重
+        if (userList.value.some(u => u.username === data.username)) {
+            throw new Error('用户名已存在');
+        }
+        await addUserApi(data);
     }
+})
+
+
+//点击新增按钮
+const onAdd = () => {
+    openForm({
+        username: '',
+        role: '普通编辑' as any,
+        status: 'active',
+    } as SystemUser)
 }
-onMounted(() =>ftechUsers());
+//点击配置权限/编辑按钮
+const onEdit = (row: SystemUser) => {
+    openForm(row); //Hook内部会自动执行deepClone,保护原数据
+}
+
+//删除逻辑:二次确认
+const handleDelete = (row: SystemUser) => {
+    ElMessageBox.confirm(
+        `确定要永久删除用户[${row.username}]吗？此操作不可撤销。`,
+        '安全确认',
+        {
+            confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning'
+        }
+    ).then(async () => {
+        try {
+            await deleteUserApi(row.id!);
+            ElMessage.success('删除成功');
+            fetchUsers();//刷新列表
+        } catch (error) {
+            ElMessage.error('删除失败');
+        }
+    }).catch(() => {
+        console.log('取消删除');
+    })
+}
+
+const handleBlurCheck = async () => {
+    const name = editingUser.value?.username;
+    if (!name || editingUser.value?.id) return;
+}
+//保存回调
+const handleSave = () => {
+    const targetName = editingUser.value?.username.trim();
+    if (!targetName) return ElMessage.warning('请输入用户名');
+
+    if (!editingUser.value?.id) {
+        const isDuplicate = userList.value.some(u => u.username === targetName);
+        if (isDuplicate) {
+            return ElMessage.error(`系统中已存在用户${targetName}`);
+        }
+    }
+
+    else {
+        const isDuplicate = userList.value.some(u => u.username === targetName);
+        if (isDuplicate) {
+            return ElMessage.error(`该用户名已被占用`);
+        }
+    }
+    submitForm(() => {
+        ElMessage.success(editingUser.value?.id ? '修改成功' : '新增成功');
+        fetchUsers();//刷新视图
+    })
+}
+onMounted(() => fetchUsers());
 </script>
 <template>
     <div class="system-container">
         <div class="page-header">
             <h3>👥 用户权限管理</h3>
-            <button class="btn-add" @click="isModalOpen = true">+ 新增用户</button>
+            <div class="action">
+                <!-- 查集成搜索框 -->
+                 <el-input
+                 v-model="searchQuery"
+                 placeholder="输入用户名搜索..."
+                 style="width: 200px; margin-right: 15px;
+                 clearable"/>
+                <el-button type="primary" @click="onAdd">+ 新增用户</el-button>
+            </div>
         </div>
 
+
         <!-- 数据展示区 -->
-         <div class="table-card">
-            <div v-if="isLoading" class="loading-tip">数据加载中...</div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>用户名</th>
-                        <th>角色</th>
-                        <th>状态</th>
-                        <th>最后登录</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="user in userLsit" :key="user.id">
-                        <td>{{ user.id }}</td>
-                        <td><strong>{{ user.username }}</strong></td>
-                        <td><span class="role-tag">{{ user.role }}</span></td>
-                        <td>
-                            <span>{{ user.status === 'active'? '正常':'禁用' }}</span>
-                        </td>
-                        <td>{{ user.lastlogin }}</td>
-                        <td>
-                            <button class="action-link">配置权限</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-         </div>
-         <!-- 新增用户弹窗 -->
-        <BaseModal
-        v-model="isModalOpen"
-        title="新增系统用户"
-        @confirm="handleAddUser">
-        <div class="user-form">
-            <div class="form-item">
-                <label >用户名</label>
-                <input type="text" v-model="newUserForm.username" placeholder="输入新账号">
+        <el-table :data="filteredUsers" v-loading="isLoading" border>
+            <el-table-column prop="id" label="ID" width="80" />
+            <el-table-column prop="username" label="用户名" />
+            <el-table-column prop="role" label="角色" />
+            <el-table-column label="状态">
+                <template #default="{ row }">
+                    <el-tag :type="row.status === 'active' ? 'success' : 'info'">{{ row.status }}</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200">
+                <template #default="{ row }">
+                    <el-button link type="primary" @click="openForm(row)">编辑</el-button>
+                    <!-- 【删】危险操作标红 -->
+                    <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 新增用户弹窗 -->
+        <BaseModal :model-value="!!editingUser" :title="editingUser?.id ? '修改用户权限' : '新增系统用户'" @confirm="handleSave"
+            @update:model-value="closeForm">
+            <div class="user-form" v-if="editingUser">
+                <div class="form-item">
+                    <label>用户名</label>
+                    <el-input @blur="handleBlurCheck" type="text" v-model="editingUser.username" placeholder="输入新账号" />
+                </div>
+                <div class="form-item">
+                    <label>分配角色：</label>
+                    <el-select v-model="editingUser.role" aria-placeholder="请选择角色" style="width=100%">
+                        <el-option label="管理员" value="admin" />
+                        <el-option label="普通编辑" value="editor" />
+                        <el-option label="只读访客" value="viewer" />
+                    </el-select>
+                </div>
+                <p v-if="isSaving" class="saving-txt">正在写入数据库</p>
             </div>
-            <div class="form-item">
-                <label >角色</label>
-                <select  v-model="newUserForm.role">
-                    <option value="普通编辑">普通编辑</option>
-                    <option value="管理员">管理员</option>
-                    <option value="只读访客">只读访客</option>
-                </select>
-            </div>
-            <p v-if="isSaving" class="saving-txt">正在写入数据库</p>
-        </div>
         </BaseModal>
     </div>
 </template>
 <style scoped>
-/* 保持之前的样式，增加 loading 提示 */
-.loading-tip { text-align: center; padding: 40px; color: #999; }
-.saving-txt { color: #1890ff; font-size: 12px; margin-top: 10px; }
-.user-form { padding: 10px 0; }
-.form-item { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-.form-item input, .form-item select { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+.system-container {
+    padding: 20px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.table-card {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.user-form {
+    padding: 10px 0;
+}
+
+.form-item {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    z-index: 9999;
+}
+
+.form-item label {
+    width: 80px;
+    text-align: right;
+    color: #606266;
+}
+
+.saving-txt {
+    color: #1890ff;
+    font-size: 12px;
+    text-align: center;
+}
 </style>
