@@ -37,7 +37,7 @@ interface BaseResponse<T = any> {
 //   headers: { "Content-Type": "application/json;charset=utf-8" },
 // });
 const service = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_URL || "/api",
   timeout: 10000,
    headers: { "Content-Type": "application/json;charset=utf-8" },
 });
