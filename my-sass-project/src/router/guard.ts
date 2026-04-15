@@ -37,21 +37,6 @@ export function generateAsyncRoutes(routes:RouteRecordRaw[],roles:string[]): Rou
     });
     return res;
 }
-
-// 核心算法：根据角色过滤动态路由
-// function filterAsyncRoutes(routes: any[],roles:string[]){
-//     const res: any[] = [];
-//     routes.forEach(route =>{
-//         const tmp = {...route};
-//         // 如果路由meta中定义了roles,则检查用户是否拥有其中之一
-//         if (tmp.meta&& tmp.meta.roles) {
-//             if (roles.some(role => tmp.meta.roles.includes(role))) {
-//                 res.push(tmp);
-//             }
-//         }
-//     });
-//     return res;
-// }
 router.beforeEach(async(to,_from) =>{
     nProgress.start();//开启进度条
     //必须在钩子内部调用Store

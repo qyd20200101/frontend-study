@@ -14,7 +14,7 @@ html,body, #app{
   font-family: Arial, Helvetica, sans-serif;
   background: #f0f2f5;
 }
-#nprgress .bar{
+#nprogress .bar{
   background: #1890ff;
 }
 </style>

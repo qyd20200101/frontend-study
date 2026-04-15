@@ -31,11 +31,30 @@ const departments =[
     { id: 12, pid: 10, name: '高新区分队' }
 ];
 const categories = ['IoT','Software','Visual','Security'];
-//模拟数据库
+// server.js 
+
+// 1. 模拟数据库增加初始头像
 let systemUsers = [
-    { id: 1, username: 'admin', role: '超级管理员', status: 'active', lastLogin: '2023-10-24 10:00' },
-    { id: 2, username: 'editor_zhang', role: '普通编辑', status: 'active', lastLogin: '2023-10-23 15:30' }
+    { 
+        id: 1, 
+        username: 'admin', 
+        role: '超级管理员', 
+        roles: ['admin'], // 增加权限数组对应前端
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin',
+        status: 'active', 
+        lastLogin: '2023-10-24 10:00' 
+    },
+    { 
+        id: 2, 
+        username: 'editor_zhang', 
+        role: '普通编辑', 
+        roles: ['editor'],
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zhang',
+        status: 'active', 
+        lastLogin: '2023-10-23 15:30' 
+    }
 ];
+
 
 
 // 路由定义（匹配前端request.ts的逻辑）
@@ -96,19 +115,16 @@ app.post('/api/users', (req, res) => {
 
 //获取用户信息（包含角色）
 app.get('/api/user/info',(req,res) =>{
+    const currentUser = systemUsers[0];
     res.json({
         code:200,
-        data:{
-            username:'张三',
-            avatar: 'http://xxx.jpg',
-            roles: ['admin']//关键：返回角色
-        },
+        data:currentUser,
         message: 'success'
     })
 });
 
 //修改用户权限/信息
-app.post('/api/users/update',(req,res) =>{
+app.post('/api/user/update',(req,res) =>{
     const {id,role,username} = req.body;
     const index = systemUsers.findIndex(u => u.id ===id);
     if (index !== -1) {
@@ -137,6 +153,12 @@ app.delete('/api/users/:id',(req,res) =>{
             code:404,message: '未找到该用户'
         })
     }
+});
+
+// 模拟上传接口
+app.post('/api/user/upload', (req, res) => {
+    const randomSeed = Math.random().toString(36).substring(7);
+    const newAvatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}`;
 });
 
 //获取项目列表

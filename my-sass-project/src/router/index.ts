@@ -1,7 +1,7 @@
 import { createRouter,createWebHistory,type RouteRecordRaw } from "vue-router";
 // import  Layout  from "../layout/index.vue";
 //路由懒加载
-const Layout = () =>import('../layout/index.vue');
+const Layout = () =>import('../layout/MainLayout.vue');
 
 //常量路由中增加一个对根路径的处理
 //1.静态路由：所有人都可以访问（登录,404）
@@ -49,6 +49,12 @@ export const asyncRoutes: RouteRecordRaw[] = [
                 name: 'System',
                 component: () =>import('../views/System.vue'),
                 meta: {title: '系统设置', roles: ['admin']}
+            },
+            {
+                path: 'profile',
+                name: 'profile',
+                component: () =>import('../views/Profile.vue'),
+                meta: {title: '个人中心',icon: 'User', hidden: true }
             }
         ]
     }
@@ -58,5 +64,7 @@ const router = createRouter({
     history: createWebHistory(),
     routes: constantRoutes
 })
-
+export function resetRouter(){
+    
+}
 export default router;

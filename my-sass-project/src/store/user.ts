@@ -19,7 +19,6 @@ export const useUserStore = defineStore('user',() =>{
     token.value = data.token;
     localStorage.setItem('token',data.token);
     };
-
     const getUserInfo = async () =>{
         const data = await getUserInfoApi();
         userInfo.value = data;
@@ -28,13 +27,12 @@ export const useUserStore = defineStore('user',() =>{
     };
 
     const logout = () =>{
-        
         localStorage.removeItem('token');
-        localStorage.clear()
-        // resetRouter();
-        token.value = ' ';
+        // localStorage.clear();
+        token.value = '';
         roles.value =[];
         userInfo.value = null;
+        location.reload();
     };
 
     return {token,roles,userInfo,isLogin,login,getUserInfo,logout};

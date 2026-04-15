@@ -30,6 +30,7 @@ import { useTable } from "../hooks/useTable";
 import { useForm } from "../hooks/useForm";
 //引入API
 import { getProjectsApi, updateProjectApi } from "../api/project";
+import AuthButton from "./AuthButton.vue";
 
 
 
@@ -156,6 +157,12 @@ onUnmounted(() => clearInterval(timer));
         <!-- <div v-if="errorMessages" class="error-banner">{{ errorMessages }}</div> -->
         <div class="header">
             <h2>资产管理面板</h2>
+            <AuthButton
+            role="admin"
+            type="success"
+            icon="Plus">
+                新增资产
+            </AuthButton>
             <div class="status">
                 当前筛选项目总预算:
                 <span class="price">
