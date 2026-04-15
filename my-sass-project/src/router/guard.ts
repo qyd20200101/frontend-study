@@ -52,14 +52,14 @@ export function generateAsyncRoutes(routes:RouteRecordRaw[],roles:string[]): Rou
 //     });
 //     return res;
 // }
-router.beforeEach(async(to,from,next) =>{
+router.beforeEach(async(to,_from) =>{
     nProgress.start();//开启进度条
     //必须在钩子内部调用Store
     const userStore = useUserStore();
 
     if (userStore.token) {
         if (to.path === '/login') {
-            next({path: '/'});
+            return '/';
         }else{
             // 关键：判断是否已经获取过用户信息和权限
             if (userStore.roles.length === 0) {
@@ -78,23 +78,23 @@ router.beforeEach(async(to,from,next) =>{
                         path: '/:pathMatch(.*)*',
                         redirect: '/404'
                     })
-                    next({...to,replace:true});
+                    return({...to,replace:true});
                     // 确保动态路由已挂载完成
                 } catch (error) {
                     userStore.logout();
-                    next(`/login?redirect=${to.path}`);
+                    return(`/login?redirect=${to.path}`);
                 }
             }else{
-                next();//已经有了权限直接过
+                return true;//已经有了权限直接过
             }
         }
     }else{
         //白名单直接进入，无token
         if (whiteList.includes(to.path)) {
-            next();
+            return true;
         }else{
             //否则跳到登录页
-            next(`/login?redirect=${to.path}`)
+            return(`/login?redirect=${to.path}`)
         }
     }
 });

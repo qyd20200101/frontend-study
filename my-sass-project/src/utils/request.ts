@@ -1,7 +1,6 @@
 // 分离式导入
 import axios from "axios";
 import type {
-  AxiosInstance,
   InternalAxiosRequestConfig,
   AxiosResponse,
   AxiosError,

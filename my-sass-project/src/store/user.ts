@@ -28,12 +28,13 @@ export const useUserStore = defineStore('user',() =>{
     };
 
     const logout = () =>{
-        token.value = ' ';
-        roles.value =[];
-        userInfo.value = null;
+        
         localStorage.removeItem('token');
         localStorage.clear()
         // resetRouter();
+        token.value = ' ';
+        roles.value =[];
+        userInfo.value = null;
     };
 
     return {token,roles,userInfo,isLogin,login,getUserInfo,logout};

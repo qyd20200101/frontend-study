@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 // 模拟数据库数据
-const projects = [
+let projects = [
     { id: 1, name: '西安高新区智慧路灯项目', budget: 1200000, status: 'active', category: 'IoT' },
     { id: 2, name: '软新园区物业管理系统', budget: 450000, status: 'active', category: 'Software' },
     { id: 3, name: '秦岭生态监测大屏', budget: 800000, status: 'archived', category: 'Visual' },
@@ -32,7 +32,7 @@ const departments =[
 ];
 const categories = ['IoT','Software','Visual','Security'];
 //模拟数据库
-const systemUsers = [
+let systemUsers = [
     { id: 1, username: 'admin', role: '超级管理员', status: 'active', lastLogin: '2023-10-24 10:00' },
     { id: 2, username: 'editor_zhang', role: '普通编辑', status: 'active', lastLogin: '2023-10-23 15:30' }
 ];
@@ -125,7 +125,7 @@ app.delete('/api/users/:id',(req,res) =>{
     const initialLength = systemUsers.length;
 
     //过滤掉匹配ID的用户
-    systemUsers = systemUsers.filter(u => u.id !== paraseInt(id));
+    systemUsers = systemUsers.filter(u => u.id !== parseInt(id));
 
     if (systemUsers.length < initialLength) {
         res.json({
@@ -149,7 +149,33 @@ app.get ('/api/projects',(req,res) =>{
         })
     }, 800);//模拟网络延迟
 });
+//新增/更新项目接口
+app.post('/api/projects/update', (req,res) =>{
+    const updateData = req.body;
+    const {id} = updateData;
 
+    // 在模拟数据库里找到对应项
+    const index = projects.findIndex(p => p.id === id);
+
+    if (index !== -1) {
+        // 更新数据
+        projects[index] = {...projects[index], ...updateData};
+
+        //返回重构响应（必须执行res.json，否则前端会一直pending）
+        res.json({
+            code:200,
+            data: projects[index],
+            message: '更新成功'
+        });
+        console.log(`项目[ID:${id}已更新]`);
+    }else{
+        //如果没找到（比如新增情况，或者ID传错了）
+        res.status(404).json({
+            code:404,
+            message: '未找到该项目'
+        });
+    }
+})
 //获取分类字典
 app.get('/api/categories',(req,res) =>{
     res.json({

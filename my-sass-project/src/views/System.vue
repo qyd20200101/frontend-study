@@ -58,9 +58,6 @@ const onAdd = () => {
     } as SystemUser)
 }
 //点击配置权限/编辑按钮
-const onEdit = (row: SystemUser) => {
-    openForm(row); //Hook内部会自动执行deepClone,保护原数据
-}
 
 //删除逻辑:二次确认
 const handleDelete = (row: SystemUser) => {

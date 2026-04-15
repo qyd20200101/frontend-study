@@ -4,7 +4,6 @@ import App from './App.vue'
 import router from "./router";
 import './router/guard';//关键：导入路由守卫
 import { createPinia } from 'pinia';
-import { useUserStore } from './store/user';
 import { permission } from "./directive/permission";
 const app = createApp(App);
 

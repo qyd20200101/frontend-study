@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { Comment } from "vue";
 import { useUserStore } from "../store/user";
-import { useRouter } from "vue-router";
-
 const userStore = useUserStore();
-const router = useRouter();
 
 //退出登录逻辑
-const handleLogout = () => {
+const handleLogout = async () => {
     userStore.logout();
-    router.push('/login');
+    // router.push切换页面，大量的全局状态闭包，未解绑的事件监听不会被去重
+    // router.replace('/login');
+    window.location.href = '/login';
+    console.log('退出');
+    
 };
 </script>
 <template>
@@ -37,11 +37,11 @@ const handleLogout = () => {
 
             <!-- 核心内容区：这是子路由渲染的地方 -->
             <main>
-                <router-view v-slot="{ Component }">
+                <router-view v-slot="{ Component }" class="app-main">
                     <transition name="fade-transform" mode="out-in">
                         <component :is="Component"/>
                     </transition>
-                    </router-view>
+                </router-view>
             </main>
         </div>
     </div>
@@ -95,7 +95,8 @@ const handleLogout = () => {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    gap: 20px;
+    overflow: auto;
 }
 
 .header {

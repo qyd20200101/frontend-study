@@ -7,14 +7,14 @@
 2.心智模型统一，统一使用ref减少编写.value的成本，让代码风格一致
 3.类型追踪,ref在ts的类型推导清晰，结合接口定义，完美规避异步赋值地类型错误
 */
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { mySum } from '../utils/engine';
 import BaseModal from "./BaseModal.vue";
 import TreeItem, { type TreeNode } from "./TreeItem.vue";
 import request from "../utils/request";
-import AuthButton from "./AuthButton.vue";
+import AssetChart from "./AssetChart.vue";
 
-//引入Hooks
+
 /*
 提升点：
 1.方法名一致性：通过Hooks导出的openForm，让模板意图明确，
@@ -25,10 +25,12 @@ import AuthButton from "./AuthButton.vue";
 让整个流程的数据都是强类型
 4.防御性编程：修正isLoadingTree的初始化，和BaseModal插槽位置,维持UI复用
 */
+//引入Hooks
 import { useTable } from "../hooks/useTable";
 import { useForm } from "../hooks/useForm";
 //引入API
 import { getProjectsApi, updateProjectApi } from "../api/project";
+
 
 
 
@@ -119,6 +121,13 @@ const arrToTree = (items: TreeNode[]): TreeNode[] => {
     }
     return result;
 }
+//将原始数据转化为图标需要的格式
+const chartData = computed(() => {
+    return displayData.value.map(item => ({
+        name: item.name,
+        value: item.budget
+    }));
+});
 
 //保存操作的回调
 const handleSave = () => {
@@ -127,11 +136,19 @@ const handleSave = () => {
         refreshtable();
     })
 }
-const handleDelete = () => {
-    console.log('执行删除逻辑');
-
-}
-onMounted(() => initExtraData());
+//模拟实时数据轮询
+let timer: number;
+onMounted(() => {
+    initExtraData();
+    timer = window.setInterval(() =>{
+        //模拟数据微笑波动，观察图标动画
+        displayData.value = displayData.value.map(item =>({
+            ...item,
+            budget: item.budget + (Math.random() > .5 ? 1000 : -1000),
+        }));
+    },5000);
+});
+onUnmounted(() => clearInterval(timer)); 
 </script>
 <template>
     <div class="manager-container">
@@ -154,6 +171,7 @@ onMounted(() => initExtraData());
         </div>
 
         <!-- 数据表格 -->
+         <AssetChart title="实时资产预算分布" :data="chartData"></AssetChart>
         <el-table :data="displayData" class="data-table" v-loading="isLoading" style="width: 100%;">
             <el-table-column prop="name" label="项目名称" min-width="180" />
             <el-table-column prop="category" label="分类" width="120">
@@ -179,14 +197,6 @@ onMounted(() => initExtraData());
                 </template>
             </el-table-column>
         </el-table>
-           <AuthButton role="admin" type="danger" @click="handleDelete">
-                删除项目
-            </AuthButton>
-            <div v-permission="['admin', 'editor']" class="admin-panel">
-                <h3>内部核心数据（仅授权可见）</h3>
-                <p>这里展示的是资产折旧率等敏感信息...</p>
-            </div>
-
         <!-- 编辑模态框(展示深拷贝应用) -->
         <BaseModal :model-value="!!editingItem" title="修改项目信息" @confirm="handleSave" @update:model-value="closeForm">
             <div v-if="editingItem" class="edit-form">

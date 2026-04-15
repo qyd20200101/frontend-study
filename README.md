@@ -1,57 +1,53 @@
-📚 前端学习笔记仓库
-记录前端从 0 到 1 的系统学习过程，每日更新代码与学习心得，目标成为一名合格的前端开发工程师。
-📖 仓库简介
-本仓库用于存放前端学习过程中的所有代码、练习、笔记和项目实战，涵盖 HTML、CSS、JavaScript 核心、框架进阶等内容，按照学习天数进行分类整理，方便回顾与复盘。
-📂 目录结构
-plaintext
-frontend-study/
-├── day01-HTML基础/          # HTML标签、语义化、表单
-├── day02-CSS基础/           # CSS选择器、盒模型、布局
-├── day03-JavaScript基础/    # JS变量、函数、作用域、防抖节流
-├── day04-JavaScript进阶/    # 原型、闭包、异步编程
-├── day05-DOM&BOM/           # DOM操作、事件、浏览器API
-└── README.md                # 仓库说明文档
-📅 学习进度
-表格
-学习天数	学习内容	完成状态
-Day01	HTML 常用标签、语义化标签、表单与表单验证	✅ 已完成
-Day02	CSS 选择器、盒模型、浮动与定位、Flex 布局	✅ 已完成
-Day03	JS 变量与数据类型、函数、作用域、防抖函数实现	✅ 已完成
-Day04	原型与原型链、闭包、this 指向、call/apply/bind	📝 进行中
-Day05	DOM 操作、事件流、事件委托、BOM 常用 API	⏳ 待开始
-💡 核心知识点总结
-Day01 HTML
-语义化标签：<header> <nav> <main> <article> <footer>
-表单元素：<input> <select> <textarea> 及常用属性
-块级元素与行内元素的区别
-Day02 CSS
-选择器优先级：!important > 行内样式 > ID > 类 > 标签
-盒模型：标准盒模型 vs IE 盒模型（box-sizing）
-Flex 布局常用属性：flex-direction justify-content align-items
-Day03 JavaScript
-变量声明：var/let/const 的区别
-函数声明与函数表达式
-防抖函数的实现与应用场景
-🚀 本地运行
-克隆仓库到本地
-bash
-运行
-git clone git@github.com:qyd20200101/frontend-study.git
-进入对应天数的文件夹
-直接用浏览器打开 .html 文件即可运行
-📝 提交规范
-feat: 新增：新增学习内容、代码或笔记
-fix: 修复：修复代码错误或笔记笔误
-docs: 文档：更新 README 或其他文档
-refactor: 重构：优化代码结构，不改变功能
-📞 联系方式
-GitHub：
-@qyd20200101
-File
-邮箱：1326255779@qq.com
-🎯 学习计划
-第一阶段：HTML/CSS/JavaScript 核心基础（15 天）
-第二阶段：ES6 + 新特性、TypeScript 入门（10 天）
-第三阶段：Vue3 全家桶实战（20 天）
-第四阶段：前端工程化、性能优化（10 天）
-第五阶段：项目实战（30 天）
+企业级资产管理中台 (Enterprise Asset Management Dashboard)
+本项目是一套基于 Vue 3 + TypeScript + Vite 构建的工业级 SaaS 后端管理系统。项目不仅实现了核心业务流，更在权限架构（RBAC）、逻辑抽象（Hooks）、高性能递归算法以及工程化调优等方面进行了深度实践。
+
+🚀 技术栈选型
+核心框架：Vue 3 (Composition API) + TypeScript 5.x
+构建工具：Vite 6.x (具备极致的 HMR 体验)
+状态管理：Pinia (支持持久化与模块化)
+路由管理：Vue Router 4 (集成动态权限拦截)
+UI 组件库：Element Plus (按需引入方案)
+可视化：Echarts 5.x (响应式封装)
+网络请求：Axios (全链路类型契约封装)
+✨ 项目核心亮点 (2.5年经验硬实力体现)
+1. 严密的 RBAC 权限系统
+动态路由挂载：弃用简单的 v-if 隐藏菜单，采用 router.addRoute 在路由守卫中根据用户角色（admin/editor）动态注入路由表。
+安全闭环：实现“非法路径不存在”机制，未授权用户直接访问 URL 会命中 404 捕获，且配合 v-permission 自定义指令实现 DOM 级的按钮权限控制。
+2. 高阶逻辑抽离 (Custom Hooks)
+useTable：高度封装了列表加载、分页、防抖搜索及 Loading 状态锁，将业务组件样板代码减少了 60%。
+useForm：集成工业级深拷贝（解决循环引用），构建“沙盒编辑”模式。支持编辑未保存时的自动状态回滚，确保单向数据流的纯粹性。
+3. 无限层级组织架构架构
+高性能转换：通过 O(n) 时间复杂度的 Map 映射算法，将后端扁平数据（pid 结构）高效转换为递归树形结构。
+递归组件：手写 TreeItem 递归组件，处理复杂的事件冒泡与层级缩进，支持无限深度的部门管理。
+4. 数据可视化与性能监控
+响应式图表：对 Echarts 进行组件化封装，集成 ResizeObserver 自动缩放，并严格执行 dispose 销毁机制，彻底规避单页应用中的内存泄漏风险。
+实时数据流：模拟轮询机制实现看板数据的平滑补间动画更新。
+5. 工程化调优 (Performance)
+极致瘦身：配置 manualChunks 分包策略，将重型库（Echarts/ElementPlus）抽离，配合 Gzip 预压缩，首屏加载体积减小 70%。
+代码规范：遵循 Angular 提交规范（feat/fix/perf），集成 TypeScript 严格模式，实现零 any 编码。
+📦 项目运行
+环境准备
+Node.js 18+
+npm 9+
+快速启动
+安装依赖
+BASH
+npm install
+启动后端模拟服务 (Mock Server)
+BASH
+node server/server.js
+启动前端开发环境
+BASH
+npm run dev
+📂 目录结构规范
+TEXT
+src/
+├── api/            # 接口契约层 (定义全链路 TS 类型)
+├── components/     # 公共 UI 组件 (BaseModal, AuthButton等)
+├── directives/     # 全局自定义指令 (permission等)
+├── hooks/          # 高阶逻辑抽离 (useTable, useForm)
+├── layout/         # 嵌套布局容器
+├── router/         # 路由配置与全局权限守卫
+├── store/          # Pinia 状态管理中心
+├── utils/          # 底层工具库 (engine.ts 算法集)
+└── views/          # 业务页面模块

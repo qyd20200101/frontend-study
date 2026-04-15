@@ -27,51 +27,53 @@ export interface UserInfo{
     avatar: string;
     roles: string[];
 }
-
+export interface SystemUser{
+    id: number;
+    username: string;
+    role: 'string' |'editor'| 'viewer';
+    status: 'active'| 'disabled';
+    lastLogin: string;
+}
 // 编写API接口
-export const loginApi = (data: LoginData) =>{
-    return request<LoginResult>({
+// 隐式返回 (Implicit Return) —— TS 5.0 推荐写法
+// 不写大括号，箭头后面直接跟表达式，它会自动把结果返回。
+export const loginApi = (data: LoginData) =>
+     request<LoginResult>({
         url: '/login',
         method: 'post',
         data
     })
-}
+
 
 //获取当前用户信息接口
-export const getUserInfoApi = () =>{
-    return request<UserInfo> ({
+export const getUserInfoApi = () =>
+     request<UserInfo> ({
         url: '/user/info',
         method: 'get'
     });
-};
+;
 //系统用户类型定义
-export interface SystemUser{
-    id: number;
-    username: string;
-    role: string;
-    status: 'active'| 'disabled';
-    lastlogin: string;
-}
+
 //获取用户列表
-export const getUsersApi =() =>{
-    return request<SystemUser[]>({
+export const getUsersApi =() =>
+     request<SystemUser[]>({
         url: '/users',
         method: 'get'
     });
-};
+;
 //新增用户
-export const addUserApi = (data: Partial<SystemUser>) =>{
-    return request({
+export const addUserApi = (data: Partial<SystemUser>) =>
+    request({
         url: '/users',
         method: 'post',
         data
     });
-};
-export const deleteUserApi = (id:number) =>{
-    return request({
+;
+export const deleteUserApi = (id:number) =>
+     request({
         url: `/users/${id}`,
         method: 'delete'
     });
-}
+
 //更新用户
 export const updateUserApi = (data:SystemUser) => request({url: '/users/update',method: 'post',data});
