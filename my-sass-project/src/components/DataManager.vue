@@ -13,6 +13,7 @@ import BaseModal from "./BaseModal.vue";
 import TreeItem, { type TreeNode } from "./TreeItem.vue";
 import request from "../utils/request";
 import AssetChart from "./AssetChart.vue";
+import  ProSelect  from "./ProSelect.vue";
 
 
 /*
@@ -212,8 +213,16 @@ onUnmounted(() => clearInterval(timer));
                     <input v-model="editingItem.name" />
                 </div>
                 <div class="form-item">
+                    <label >项目分类</label>
+                    <ProSelect v-model="editingItem.category" dictCode="project_category"/>
+                </div>
+                <div class="form-item">
                     <label>预算(元)：</label>
                     <input v-model.number="editingItem.budget" type="number">
+                </div>
+                <div class="form-item">
+                    <label >项目状态</label>
+                    <ProSelect v-model="editingItem.status" dictCode="project_status"/>
                 </div>
                 <p v-if="isSaving" class="saving-tip">正在同步到后端</p>
             </div>

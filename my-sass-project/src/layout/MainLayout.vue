@@ -3,7 +3,8 @@
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "../store/user";
 import { ArrowDown, Odometer, List } from "@element-plus/icons-vue";
-
+import { findPathNodes } from "../utils/route";
+import { computed } from "vue";
 const router = useRouter();
 const route = useRoute(); // 引入 route 获取 meta 信息
 const userStore = useUserStore();
@@ -16,6 +17,16 @@ const handleCommand = (command: string) => {
         router.push('/login');
     }
 };
+
+//利用DFS动态计算当前路径的面包屑层级
+const  breadrumbList = computed(() =>{
+    //从userStore中拿到我们生成的完整动态路由树
+    const routesTree = userStore.menuRoutes;
+    //传入当前页面的URL(route.path)进行深度搜索
+    const matchedNodes = findPathNodes(routesTree,route.path);
+
+    return matchedNodes || [];
+})
 </script>
 
 <template>

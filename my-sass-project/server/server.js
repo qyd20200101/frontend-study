@@ -198,15 +198,67 @@ app.post('/api/projects/update', (req,res) =>{
         });
     }
 })
-//获取分类字典
-app.get('/api/categories',(req,res) =>{
-    res.json({
-        code:200,
-        data:categories,
-        message:'success'
-    })
-});
+const sysDictDataBase = {
+    //项目分类字典
+    'project_category':[
+        {label: '物联网(IoT)',value: 'IoT'},
+        {label: '软件研发(Software)',value: 'Software'},
+        {label: '数据大屏(Visual)',value: 'Visual'},
+        {label: '安全防护(Security)',value: 'Security'},
+    ],
+    //项目状态字典
+    'project_status':[
+        {label: '进行中',value:'active'},
+        {label: '已归档',value:'archived'}
+    ],
+    //用户角色字典
+    'sys_role_list' :[
+        {label: '超级管理员',value: 'admin'},
+        {label: '普通编辑',value: 'editor'},
+        {label: '访客',value: 'viewer'},
+    ],
+    //用户状态字典
+    'sys_user_status': [
+        {label: '正常',value: 'active'},
+        {label: '禁用',value: 'disabled'}
+    ]
+};
+//通用字典查询接口
+app.get('/api/dict/:dictCode', (req,res) =>{
+    const { dictCode} = req.params;
 
+    //从字典库中获取数据,如果不存在就返回空数组
+    const dictData = sysDictDataBase[dictCode] || [];
+
+    //加延迟，模拟真实查库过程
+    setTimeout(() => {
+        res.json({
+            code:200,
+            data: dictData,
+            message: 'success'
+        })
+    }, 300);
+})
+
+//批量字典查询接口
+app.get('/api/dict/batch', (req,res) =>{
+    const { codes } = req.query;
+    if (!codes) {
+        return res.json({code: 200,data: {}})
+    }
+    const codeList = code.split(',');
+    const result = {};
+
+    codeList.forEach(code => {
+        result[code] = sysDictDataBase[code] || [];
+    });
+
+    res.json({
+        code: 200,
+        data: result,
+        message: 'success'
+    })
+})
 
 //获取统计数据
 app.get('/api/status',(req,res) =>{

@@ -51,8 +51,6 @@ export const getUserInfoApi = () =>
         url: '/user/info',
         method: 'get'
     });
-;
-//系统用户类型定义
 
 //获取用户列表
 export const getUsersApi =() =>

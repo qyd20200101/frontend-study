@@ -39,6 +39,7 @@ declare module 'vue' {
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTag: typeof import('element-plus/es')['ElTag']
     OrderDashboard: typeof import('./src/components/OrderDashboard.vue')['default']
+    ProSelect: typeof import('./src/components/ProSelect.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SmartSearch: typeof import('./src/components/SmartSearch.vue')['default']

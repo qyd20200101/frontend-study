@@ -55,6 +55,8 @@ router.beforeEach(async(to,_from) =>{
                     //假设generateAsyncRoutes是过滤函数
                     const accessRoutes = generateAsyncRoutes(asyncRoutes,roles);
 
+                    //在accessRoutes生成后，立马存入pinia
+                    userStore.setRoutes(accessRoutes);
                     //动态添加到路由表
                     accessRoutes.forEach(route => {
                         router.addRoute(route);

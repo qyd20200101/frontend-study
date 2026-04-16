@@ -1,12 +1,12 @@
 // 分离式导入
+import { useUserStore } from "../store/user";
 import axios from "axios";
 import type {
   InternalAxiosRequestConfig,
   AxiosResponse,
   AxiosError,
-  AxiosRequestConfig
+  AxiosRequestConfig,
 } from "axios";
-
 /*
 封装思路：
 1.数据扁平化：在响应拦截器通过response.data.data进行脱壳，直接拿到业务实体
@@ -21,7 +21,7 @@ ide提供精准的属性补全和查找
 1)外部调用层往往只传url和method，此时应该使用AxiosRequestConfig，属性可选
 2)拦截器内部属性确定存在，可以保证在拦截器操作config.headers时，不需要频繁非空判断
 */
-//2.定义后端返回的通用数据类型
+// 定义后端返回的通用数据类型
 //假设后端返回格式为：{code:200,data:T，message:'success'}
 interface BaseResponse<T = any> {
   code: number;
@@ -29,18 +29,37 @@ interface BaseResponse<T = any> {
   message: string;
 }
 
-//3.创建Axios实例
+//是否正在刷新token
+let isRefreshing = false;
+//请求队列：存储因为token过期而被挂起的请求
+// 利用 Promise 控制反转和闭包特性实现请求挂起”
+let requestQueue: ((token:string) => void)[] =[];
+// 创建Axios实例
 // const service: AxiosInstance = axios.create({
 //   baseURL: import.meta.env.VITE_URL || "/api", //使用vite变量
 //   timeout: 10000,
 //   headers: { "Content-Type": "application/json;charset=utf-8" },
 // });
+
+const refreshAxios = axios.create({
+  baseURL:import.meta.env.VITE_URL || '/api',
+  timeout: 5000
+});
+
+//将属性接口直接定义在当前文件，彻底告别循环依赖
+const refreshTokenApi =() =>{
+  return refreshAxios.post('/auth/refresh',{
+    //假设有refresh_token
+    refresh_token: localStorage.getItem('refresh_token')
+  })
+}
+
 const service = axios.create({
   baseURL: import.meta.env.VITE_URL || "/api",
   timeout: 10000,
    headers: { "Content-Type": "application/json;charset=utf-8" },
 });
-//4.请求拦截器
+// 请求拦截器
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // 场景：从本地获取Token并注入请求头
@@ -55,7 +74,7 @@ service.interceptors.request.use(
   },
 );
 
-//5.响应拦截器
+// 响应拦截器
 service.interceptors.response.use(
   (response: AxiosResponse<BaseResponse>) => {
     // 直接获取后端定义的code和data
@@ -68,10 +87,46 @@ service.interceptors.response.use(
 
     //场景：处理特定错误码，如401登录过期
     if (code === 401) {
-      console.error("登录已过期，请重新登陆");
-      //window.location.href = '/login'
-    }
+      const config = response.config;
 
+      //如果没有刷新，触发属性逻辑
+      if (!isRefreshing) {
+        isRefreshing = true;
+
+        //假设getUserStore()是获取oinia实例的方法
+        const userStore = useUserStore();
+
+        //发起刷新token的请求
+        return refreshTokenApi().then((res) =>{
+          //保存新的token
+          const newToekn = res.data.token;
+          userStore.setToken(newToekn);
+
+          //带着新token将队列里的请求全部重新执行
+          requestQueue.forEach(cb => cb(newToekn));
+          requestQueue = []; //清空队列
+
+          //重新发起当前报错的这一个请求
+          config.headers['Authorization'] = `Bearer ${newToekn}`;
+          return service(config);
+        }).catch((err) =>{
+          //如果refreshToken也过期，只能强制登出
+          userStore.logout();
+          return Promise.reject(err);
+        }).finally(() =>{
+          isRefreshing = false;
+        });
+      }else{
+        //如果正在刷新，将后续发来的请求挂起啊，存入队列
+        //利用Promise让请求在这里卡住，等待上面刷新成功后调用resolve释放
+        return new Promise((resolve) =>{
+          requestQueue.push((newToken: string) =>{
+            config.headers['Authorization'] = `Bearer${newToken}`;
+            resolve(service(config));
+          });
+        });
+      }
+    }
     //其他业务错误处理
     return Promise.reject(new Error(message || "Error"));
   },
@@ -97,7 +152,7 @@ service.interceptors.response.use(
   },
 );
 
-// 6.核心：封装通用的请求方法
+// 核心：封装通用的请求方法
 const request = <T = any>(config: AxiosRequestConfig): Promise<T> => {
   return service.request(config) as unknown  as Promise<T>;
 };
