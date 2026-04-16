@@ -32,6 +32,7 @@ import { useForm } from "../hooks/useForm";
 //引入API
 import { getProjectsApi, updateProjectApi } from "../api/project";
 import AuthButton from "./AuthButton.vue";
+import { deleteUserApi } from "../api/user";
 
 
 
@@ -66,6 +67,24 @@ const {
     submitForm,
     closeForm
 } = useForm<Project>(updateProjectApi);
+
+//实现删除逻辑
+const handleDeleteUser = async(id: string| number) =>{
+    if (!confirm('确定要注销该用户吗？此操作不可逆')) return;
+
+    try {
+        const res: any = await request({
+            url: `users/${id}`,
+            method: 'delete'
+        });
+        if (res.code ===200) {
+            alert('删除成功');
+        }
+    } catch (error) {
+        console.error('删除失败', error);
+        
+    }
+}
 
 //辅助业务数据（如统计和树形）
 const stats = ref<DashboardStatus | null>(null);
@@ -226,6 +245,12 @@ onUnmounted(() => clearInterval(timer));
                 </div>
                 <p v-if="isSaving" class="saving-tip">正在同步到后端</p>
             </div>
+            <AuthButton
+            v-permission="['admin']"
+            type="success"
+            icon="Plus">
+            新增资产
+        </AuthButton>
         </BaseModal>
         <!-- 组织架构面板 -->
         <div class="tree-panel">

@@ -28,11 +28,14 @@ export interface UserInfo{
     roles: string[];
 }
 export interface SystemUser{
-    id: number;
+    id?: string | number;
     username: string;
+    password?: string;
     role: 'string' |'editor'| 'viewer';
-    status: 'active'| 'disabled';
-    lastLogin: string;
+    roles: string[];
+    status: string;
+    lastLogin?: string;
+    avatar?: string;
 }
 // 编写API接口
 // 隐式返回 (Implicit Return) —— TS 5.0 推荐写法
@@ -67,7 +70,7 @@ export const addUserApi = (data: Partial<SystemUser>) =>
         data
     });
 ;
-export const deleteUserApi = (id:number) =>
+export const deleteUserApi = (id: string|number) =>
      request({
         url: `/users/${id}`,
         method: 'delete'

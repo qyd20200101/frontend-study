@@ -7,6 +7,7 @@ import { getUsersApi, addUserApi, updateUserApi, deleteUserApi, type SystemUser 
 import BaseModal from "../components/BaseModal.vue";
 //引入核心Hook
 import { useForm } from "../hooks/useForm";
+import { use } from "echarts/types/src/extension.js";
 
 
 
@@ -53,7 +54,9 @@ const { formData: editingUser, isSaving, openForm, closeForm, submitForm } = use
 const onAdd = () => {
     openForm({
         username: '',
-        role: '普通编辑' as any,
+        password: '',
+        role: 'viewer',
+        roles: ['viewer'],
         status: 'active',
     } as SystemUser)
 }
@@ -86,22 +89,36 @@ const handleBlurCheck = async () => {
 }
 //保存回调
 const handleSave = () => {
-    const targetName = editingUser.value?.username.trim();
-    if (!targetName) return ElMessage.warning('请输入用户名');
+    const user = editingUser.value;
+    if (!user) return;
 
-    if (!editingUser.value?.id) {
-        const isDuplicate = userList.value.some(u => u.username === targetName);
-        if (isDuplicate) {
-            return ElMessage.error(`系统中已存在用户${targetName}`);
-        }
+    const targetName = user.username.trim();
+    //基础规范校验
+    if (targetName.length < 3) {
+        return ElMessage.warning('用户名至少需要3位');
     }
 
-    else {
+    if (!user.id) {
+        //校验密码
+        if (!user.password || user.password.length <6) {
+            return ElMessage.warning('新用户初始密码至少需要6位');
+        }
+
+        //全局查重
         const isDuplicate = userList.value.some(u => u.username === targetName);
         if (isDuplicate) {
-            return ElMessage.error(`该用户名已被占用`);
+            return ElMessage.error(`系统中已存在该用户${targetName}`);
         }
-    }
+    }else{
+        //查重时，必须排除当前正在编辑的ID
+        const isDuplicate = userList.value.some(u => u.username === user.id);
+
+        if (isDuplicate) {
+            return ElMessage.error(`该用户已被其他账号占用`);
+        }
+    }   
+
+    
     submitForm(() => {
         ElMessage.success(editingUser.value?.id ? '修改成功' : '新增成功');
         fetchUsers();//刷新视图
@@ -144,24 +161,30 @@ onMounted(() => fetchUsers());
             </el-table-column>
         </el-table>
         <!-- 新增用户弹窗 -->
-        <BaseModal :model-value="!!editingUser" :title="editingUser?.id ? '修改用户权限' : '新增系统用户'" @confirm="handleSave"
-            @update:model-value="closeForm">
-            <div class="user-form" v-if="editingUser">
-                <div class="form-item">
-                    <label>用户名</label>
-                    <el-input @blur="handleBlurCheck" type="text" v-model="editingUser.username" placeholder="输入新账号" />
-                </div>
-                <div class="form-item">
-                    <label>分配角色：</label>
-                    <el-select v-model="editingUser.role" aria-placeholder="请选择角色" style="width=100%">
-                        <el-option label="管理员" value="admin" />
-                        <el-option label="普通编辑" value="editor" />
-                        <el-option label="只读访客" value="viewer" />
-                    </el-select>
-                </div>
-                <p v-if="isSaving" class="saving-txt">正在写入数据库</p>
-            </div>
-        </BaseModal>
+        <BaseModal 
+    :model-value="!!editingUser" 
+    :title="editingUser?.id ? '修改用户权限' : '新增系统用户'" 
+    @confirm="handleSave"
+    @update:model-value="closeForm"
+>
+    <div class="user-form" v-if="editingUser">
+        <div class="form-item">
+            <label>用户名</label>
+            <el-input v-model="editingUser.username" placeholder="3-20位字符" :disabled="!!editingUser.id" />
+        </div>
+        
+        <div class="form-item" v-if="!editingUser.id">
+            <label>设置密码</label>
+            <el-input v-model="editingUser.password" type="password" show-password placeholder="至少6位" />
+        </div>
+
+        <div class="form-item">
+            <label>分配角色</label>
+            <ProSelect v-model="editingUser.role" dictCode="sys_role_list" style="width 100%" />
+        </div>
+        <p v-if="isSaving" class="saving-txt">正在写入系统加密数据库...</p>
+    </div>
+</BaseModal>
     </div>
 </template>
 <style scoped>
