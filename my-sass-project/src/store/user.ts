@@ -7,7 +7,7 @@ import type { RouteRecordRaw } from "vue-router";
 //使用Setup Store覆盖
 export const useUserStore = defineStore('user',() =>{
     // 1.状态（state）
-    const token = ref(localStorage.getItem('token')|| '');
+    const token = ref('');
     const roles = ref<string[]>([]);//存储接受，如['admin]或['editor]
     const userInfo = ref<any>(null);
     
@@ -20,7 +20,6 @@ export const useUserStore = defineStore('user',() =>{
     const login = async(loginForm: any) =>{
     const data = await loginApi(loginForm);
     token.value = data.token;
-    localStorage.setItem('token',data.token);
     };
 
     //设置并持久化token
@@ -42,7 +41,6 @@ export const useUserStore = defineStore('user',() =>{
     };
 
     const logout = () =>{
-        localStorage.removeItem('token');
         token.value = '';
         roles.value =[];
         menuRoutes.value =[];
@@ -51,4 +49,7 @@ export const useUserStore = defineStore('user',() =>{
     };
 
     return {token,roles,userInfo,isLogin,menuRoutes,setRoutes,setToken,login,getUserInfo,logout};
+},{
+    //开启持久化
+    persist: true
 });

@@ -34,6 +34,7 @@ const categories = ['IoT', 'Software', 'Visual', 'Security'];
 
 //优化ID生成器（）不在使用Date.now()
 const generateId = () => `u_${Math.random().toString(36).slice(2, 11)}`;
+const generateProjectId = () => `p_${Math.random().toString(36).slice(2, 11)}`;
 
 // server.js 
 // 1. 模拟数据库增加初始头像
@@ -41,6 +42,7 @@ let systemUsers = [
     {
         id: generateId(),
         username: 'admin',
+        password: '123456',
         role: '超级管理员',
         roles: ['admin'], // 增加权限数组对应前端
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin',
@@ -50,6 +52,7 @@ let systemUsers = [
     {
         id: generateId(),
         username: 'editor_zhang',
+        password: '112233',
         role: '普通编辑',
         roles: ['editor'],
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zhang',
@@ -69,7 +72,7 @@ app.post('/api/login', (req, res) => {
     if (user) {
         res.json({
             code: 200,
-            data: { token: `toekn_${user.username}_${Date.now()}` },
+            data: { token: `token_${user.username}_${Date.now()}` },
             message: '登陆成功'
         });
     } else {
@@ -105,7 +108,7 @@ app.post('/api/users', (req, res) => {
         const newUser = {
             id: generateId(),
             username,
-            password, 
+            password,
             role: role || '访客',
             roles: roles || ['viewer'],
             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
@@ -133,27 +136,32 @@ app.get('/api/user/info', (req, res) => {
     const authHeader = req.headers.authorization;
     let currentUser;
 
-    //模拟复杂的Token校验逻辑
-    if (authHeader === 'Bearer super_admin_token') {
-        currentUser = systemUsers.find(u => u.username === 'admin');
-    } else {
-        //模拟普通用户登录：假设token格式为:Bearer user_用户名
-        //计算新增用户并且新用户登录，也能准确找到人
-        const toeknValue = authHeader?.replace('Bearer', '');
-        currentUser = systemUsers.find(u => `user_${u.username}` === toeknValue)
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        // 提取 Bearer 后面的实际 Token 字符串
+        const tokenValue = authHeader.replace('Bearer ', '');
+
+        // 假设 token 格式是 token_admin_123456
+        // 我们通过 _ 分割，拿到第二段的 username ('admin')
+        const tokenParts = tokenValue.split('_');
+        if (tokenParts.length >= 2) {
+            const reqUsername = tokenParts[1];
+            // 去数据库里找这个 username
+            currentUser = systemUsers.find(u => u.username === reqUsername);
+        }
     }
 
-    //安全检查：确保roles存在，防止前端v-permission崩溃
     if (currentUser) {
         res.json({
             code: 200,
             data: {
                 ...currentUser,
-                roles: currentUser.roles || ['viewer']  //防御性处理
+                roles: currentUser.roles || ['viewer']
             },
-        })
+        });
+    } else {
+        // 如果找不到人，说明 Token 无效，返回 401 让前端跳回登录页
+        res.status(401).json({ code: 401, message: 'Token失效，请重新登录' });
     }
-
 });
 
 //修改用户权限/信息
@@ -204,33 +212,44 @@ app.get('/api/projects', (req, res) => {
         })
     }, 800);//模拟网络延迟
 });
+
 //新增/更新项目接口
 app.post('/api/projects/update', (req, res) => {
-    const updateData = req.body;
-    const { id } = updateData;
+    try {
+        const updateData = req.body;
+        const { id } = updateData;
 
-    // 在模拟数据库里找到对应项
-    const index = projects.findIndex(p => p.id === id);
-
-    if (index !== -1) {
-        // 更新数据
-        projects[index] = { ...projects[index], ...updateData };
-
-        //返回重构响应（必须执行res.json，否则前端会一直pending）
-        res.json({
+        // 如果传了 ID，说明是【修改】
+        if (id) {
+            const index = projects.findIndex(p => String(p.id) === String(id));
+            if (index !== -1) {
+                projects[index] = { ...projects[index], ...updateData };
+                // 必须要有 return！
+                return res.json({ code: 200, data: projects[index], message: '更新成功' });
+            } else {
+                return res.status(404).json({ code: 404, message: '未找到项目' });
+            }
+        } 
+        
+        // 如果没传 ID，说明是【新增】
+        const newProject = {
+            id: generateProjectId(), 
+            ...updateData
+        };
+        projects.unshift(newProject); // 加到最前面
+        
+        // 必须要有 return！
+        return res.json({
             code: 200,
-            data: projects[index],
-            message: '更新成功'
+            data: newProject,
+            message: '项目新增成功'
         });
-        console.log(`项目[ID:${id}已更新]`);
-    } else {
-        //如果没找到（比如新增情况，或者ID传错了）
-        res.status(404).json({
-            code: 404,
-            message: '未找到该项目'
-        });
+
+    } catch (error) {
+        console.error('【严重错误】', error);
+        return res.status(500).json({ code: 500, message: '服务器崩溃了' });
     }
-})
+});
 const sysDictDataBase = {
     //项目分类字典
     'project_category': [
