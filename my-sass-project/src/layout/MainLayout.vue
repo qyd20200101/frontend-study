@@ -19,14 +19,17 @@ const handleCommand = (command: string) => {
 };
 
 //利用DFS动态计算当前路径的面包屑层级
-const  breadrumbList = computed(() =>{
-    //从userStore中拿到我们生成的完整动态路由树
-    const routesTree = userStore.menuRoutes;
-    //传入当前页面的URL(route.path)进行深度搜索
-    const matchedNodes = findPathNodes(routesTree,route.path);
+const breadrumbList = computed(() => {
+    const routesTree = userStore.menuRoutes || []; // 确保是数组
+    if (!route.path || routesTree.length === 0) return [];
+    
+    try {
+        return findPathNodes(routesTree, route.path) || [];
+    } catch (e) {
+        return [];
+    }
+});
 
-    return matchedNodes || [];
-})
 </script>
 
 <template>
@@ -52,9 +55,9 @@ const  breadrumbList = computed(() =>{
             <!-- 顶部栏 -->
             <el-header class="header">
                 <div class="header-left">
-                    <el-breadcrumb separator="/">
+                    <el-breadcrumb separator="/" v-if="route.meta">
                         <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-                        <el-breadcrumb-item>{{ route.meta.title }}</el-breadcrumb-item>
+                        <el-breadcrumb-item>{{ route.meta?.title }}</el-breadcrumb-item>
                     </el-breadcrumb>
                 </div>
                 <div class="header-right">

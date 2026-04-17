@@ -45,6 +45,7 @@ declare module 'vue' {
     SmartSearch: typeof import('./src/components/SmartSearch.vue')['default']
     TreeItem: typeof import('./src/components/TreeItem.vue')['default']
     UserInfoCard: typeof import('./src/components/UserInfoCard.vue')['default']
+    VirtualTable: typeof import('./src/components/VirtualTable.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

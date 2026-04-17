@@ -84,7 +84,7 @@ const initExtraData = async () => {
 };
 
 //业务计算
-const totalBudget = computed(() => mySum(displayData.value, 'budget'));
+const totalBudget = computed(() => mySum(displayData.value || [], 'budget'));
 
 
 /*.核心算法:扁平转树形
@@ -122,7 +122,7 @@ const arrToTree = (items: TreeNode[]): TreeNode[] => {
 }
 //将原始数据转化为图标需要的格式
 const chartData = computed(() => {
-    return displayData.value.map(item => ({
+    return (displayData.value || []).map(item => ({
         name: item.name,
         value: item.budget
     }));
@@ -149,6 +149,7 @@ onMounted(() => {
     initExtraData();
     timer = window.setInterval(() =>{
         //模拟数据微笑波动，观察图标动画
+        if (!displayData.value) return;
         displayData.value = displayData.value.map(item =>({
             ...item,
             budget: item.budget + (Math.random() > .5 ? 1000 : -1000),

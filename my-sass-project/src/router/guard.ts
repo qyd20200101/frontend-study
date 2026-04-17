@@ -1,91 +1,121 @@
 import { useUserStore } from "../store/user";
-import router, { asyncRoutes } from "../router/index"; 
+import router, { asyncRoutes } from "../router/index";
 import type { RouteRecordRaw } from "vue-router";
 import nProgress from "nprogress";
-import 'nprogress/nprogress.css';
+import "nprogress/nprogress.css";
 
-//白名单：不需要登陆就能进入的页面
-const whiteList = ['/login','/404'];
-/*
-1.助手函数：判断当前用户是否有权访问该路由
-*/ 
-function hasPermission(roles:string[],route:RouteRecordRaw) {
-    // 如果路由没有定义meta或meta.roles，说明该路由是公开的，默认允许访问
-    if (route.meta && route.meta.roles) {
-        // 只要有用户的角色列表中，有一个角色在路由要求的roles数组里，就返回true
-        return roles.some(role =>(route.meta?.roles as string[]).includes(role));
-    }else{
-        return true;
-    }
-}
-// 2.核心方法：递归过滤异步路由表
-export function generateAsyncRoutes(routes:RouteRecordRaw[],roles:string[]): RouteRecordRaw[] {
-    const res: RouteRecordRaw[] =[];
-    routes.forEach(route =>{
-    // 浅拷贝一份路由对象，避免修改原始路由表
-    const tmp= {...route};
-    //如果有权限访问当前路由
-    if (hasPermission(roles,tmp)) {
-        // 关键：处理嵌套子路由，递归
-        if (tmp.children) {
-            // 递归过滤子路由，并将过滤后的结构重新赋给子路由属性
-            tmp.children = generateAsyncRoutes(tmp.children,roles);
-        }
-        //将符合条件的路由（及其子路由）加入结果数组
-        res.push(tmp);
-    }
-    });
-    return res;
-}
-router.beforeEach(async(to,_from) =>{
-    nProgress.start();//开启进度条
-    //必须在钩子内部调用Store
+const whiteList = ["/login", "/404"];
+
+/**
+ * 核心：导出 setupRouterGuard 函数供 main.ts 调用
+ * 解决 Pinia 还没挂载就执行守卫导致的白屏/报错问题
+ */
+export function setupRouterGuard() {
+  
+  router.beforeEach(async (to, _from, next) => {
+    nProgress.start();
     const userStore = useUserStore();
+    
+    // 1. 处理 Token（去除空格干扰）
+    const token = userStore.token ? userStore.token.trim() : '';
+    const hasToken = !!token;
 
-    if (userStore.token) {
-        if (to.path === '/login') {
-            return '/';
-        }else{
-            // 关键：判断是否已经获取过用户信息和权限
-            if (userStore.roles.length === 0) {
-                try {
-                    //获取用户信息和角色
-                    const {roles} = await userStore.getUserInfo();
-                    //根据角色生成动态路由
-                    //假设generateAsyncRoutes是过滤函数
-                    const accessRoutes = generateAsyncRoutes(asyncRoutes,roles);
+    // 2. 情况 A：有 Token
+    if (hasToken) {
+      if (to.path === "/login") {
+        next({ path: "/" });
+        nProgress.done();
+      } else {
+        // 检查 Pinia 中是否有角色信息
+        const hasRoles = userStore.roles && userStore.roles.length > 0;
+        
+        if (hasRoles) {
+          // 有角色，说明路由已加载，直接放行
+          next();
+        } else {
+          // 【关键】没有角色：通常发生在 F5 刷新页面时
+          try {
+            // 1) 重新获取用户信息（包含角色）
+            const { roles } = await userStore.getUserInfo();
+            
+            // 2) 根据角色过滤出动态路由
+            const accessRoutes = generateAsyncRoutes(asyncRoutes, roles);
+            
+            // 3) 将过滤后的路由动态添加到路由表
+            accessRoutes.forEach((route) => {
+              router.addRoute(route);
+            });
 
-                    //在accessRoutes生成后，立马存入pinia
-                    userStore.setRoutes(accessRoutes);
-                    //动态添加到路由表
-                    accessRoutes.forEach(route => {
-                        router.addRoute(route);
-                    });
-                    router.addRoute({
-                        path: '/:pathMatch(.*)*',
-                        redirect: '/404'
-                    })
-                    return({...to,replace:true});
-                    // 确保动态路由已挂载完成
-                } catch (error) {
-                    userStore.logout();
-                    return(`/login?redirect=${to.path}`);
-                }
-            }else{
-                return true;//已经有了权限直接过
-            }
+            // 4) 重要：把 404 捕获路由加在最后，防止刷新时先匹配到 404
+            router.addRoute({ 
+              path: "/:pathMatch(.*)*", 
+              redirect: "/404", 
+              name: 'Any' 
+            });
+
+            // 5) 更新 Pinia 里的菜单路由（用于侧边栏显示）
+            userStore.setRoutes(accessRoutes);
+
+            // 6) 【核心修正】中断当前导航，改用新路由表重新匹配
+            // replace: true 确保刷新后不产生多余的历史记录
+            next({ ...to, replace: true });
+            
+          } catch (error) {
+            console.error('获取用户信息失败:', error);
+            userStore.logout();
+            next(`/login?redirect=${to.path}`);
+            nProgress.done();
+          }
         }
-    }else{
-        //白名单直接进入，无token
-        if (whiteList.includes(to.path)) {
-            return true;
-        }else{
-            //否则跳到登录页
-            return(`/login?redirect=${to.path}`)
-        }
+      }
+    } else {
+      // 3. 情况 B：没有 Token
+      if (whiteList.includes(to.path)) {
+        // 在白名单里，直接放行
+        next();
+      } else {
+        // 不在白名单，强制跳回登录
+        next(`/login?redirect=${to.path}`);
+        nProgress.done();
+      }
     }
-});
+  });
 
-router.afterEach(() =>{
+  router.afterEach(() => {
     nProgress.done();
-})
+  });
+}
+
+/**
+ * 辅助函数：判断是否有权限访问该路由
+ */
+function hasPermission(roles: string[], route: RouteRecordRaw) {
+  if (route.meta && route.meta.roles) {
+    return roles.some((role) => (route.meta?.roles as string[]).includes(role));
+  }
+  return true;
+}
+
+/**
+ * 辅助函数：递归生成可访问的动态路由表
+ */
+export function generateAsyncRoutes(
+  routes: RouteRecordRaw[],
+  roles: string[]
+): RouteRecordRaw[] {
+  const res: RouteRecordRaw[] = [];
+  routes.forEach((route) => {
+    const tmp = { ...route };
+    if (hasPermission(roles, tmp)) {
+      if (tmp.children) {
+        tmp.children = generateAsyncRoutes(tmp.children, roles);
+      }
+      res.push(tmp);
+    }
+  });
+  return res;
+}
+
+router.afterEach(() => {
+  nProgress.done();
+});

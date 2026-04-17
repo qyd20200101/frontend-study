@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { reactive,ref } from "vue";
-import { useRouter,useRoute } from "vue-router";
+import { reactive, ref } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "../store/user";
 
 const router = useRouter();
@@ -17,7 +17,7 @@ const loginForm = reactive({
 const loading = ref(false);
 
 //3.登录处理函数
-const handleLogin = async () =>{
+const handleLogin = async () => {
     if (!loginForm.username || !loginForm.password) {
         return alert('请输入账号和密码');
     }
@@ -25,6 +25,8 @@ const handleLogin = async () =>{
     try {
         //调用Store里面的登录Action(内部调用LoginApi，并存储Token)
         await userStore.login(loginForm);
+        console.log('登陆成功，准备跳转');
+
         /*
         登录成功后，跳转用户之前想去的页面(从redirect获取参数)
         重定向逻辑：
@@ -32,15 +34,14 @@ const handleLogin = async () =>{
         当用户点击深层链接,router.beforeEach守卫会拦截并重定向到.login
         通过useRoute().query.redirect捕获路径，登录接口返回成功，
         不会简单去到首页，而是通过router.push(redirect)直接到达原本想去的页面
-        */ 
-        const redirect = (route.query.redirect as string)|| '/';
-        router.push({path: redirect});
-
-        console.log('登录成功，准备重定向至：',redirect);
+        */
+        const redirect = (route.query.redirect as string) || '/dashboard';
+        router.push(redirect);
+        console.log('登录成功，准备重定向至：', redirect);
     } catch (error) {
         alert('登录失败,请检查用户名或密码');
         console.error(error);
-    }finally{
+    } finally {
         loading.value = false;
     }
 }
@@ -59,7 +60,7 @@ const handleLogin = async () =>{
             </div>
 
             <button :disabled="loading" class="login-btn" @click="handleLogin">
-                {{ loading? '正在验证身份...':'立即登录' }}
+                {{ loading ? '正在验证身份...' : '立即登录' }}
             </button>
 
             <div class="tips">
@@ -69,41 +70,47 @@ const handleLogin = async () =>{
     </div>
 </template>
 <style scoped>
-.login-container{
+.login-container {
     height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg,#1890ff 0%, #001529 100%);
+    background: linear-gradient(135deg, #1890ff 0%, #001529 100%);
 }
-.login-box{
+
+.login-box {
     width: 400px;
-    padding: 400px;
+    padding: 40px;
     background: #fff;
     border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, .2);
     text-align: center;
 }
-h2{
+
+h2 {
     margin-bottom: 8px;
     color: #333;
 }
-.subtitle{
+
+.subtitle {
     margin-bottom: 30px;
     color: #999;
     font-size: 14px;
 }
-.form-item{
+
+.form-item {
     margin-bottom: 20px;
 }
-input{
+
+input {
     width: 100%;
     padding: 12px;
     border: 1px solid #ddd;
     border-radius: 4px;
     box-sizing: border-box;
 }
-.login-btn{
+
+.login-btn {
     width: 100%;
     padding: 12px;
     background: #1890ff;
@@ -114,11 +121,13 @@ input{
     font-size: 16px;
     transition: background .3s;
 }
-.login-btn:disabled{
+
+.login-btn:disabled {
     background: #bae7ff;
     cursor: not-allowed;
 }
-.tip{
+
+.tip {
     margin-top: 20px;
     padding-top: 10px;
     font-size: 12px;
