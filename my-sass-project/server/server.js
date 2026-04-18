@@ -182,7 +182,7 @@ app.delete('/api/users/:id', (req, res) => {
     const initialLength = systemUsers.length;
 
     //过滤掉匹配ID的用户
-    systemUsers = systemUsers.filter(u => u.id !== parseInt(id));
+    systemUsers = systemUsers.filter(u => String(u.id) !== parseInt(id));
 
     if (systemUsers.length < initialLength) {
         res.json({

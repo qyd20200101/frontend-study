@@ -23,11 +23,14 @@ export function deepClone<T>(target:T,map = new WeakMap()): T {
     const cloneTarget: any = Array.isArray(target)? [] : {};
     map.set(target as object, cloneTarget);
 
-    for (const key in target) {
-        if (Object.prototype.hasOwnProperty.call(target,key)) {
-            cloneTarget[key] = deepClone((target as any)[key],map);
-        }
-    }
+    // for (const key in target) {
+    //     if (Object.prototype.hasOwnProperty.call(target,key)) {
+    //         cloneTarget[key] = deepClone((target as any)[key],map);
+    //     }
+    // }
+    Object.keys(target as object).forEach(key =>{
+        cloneTarget[key] = deepClone((target as any)[key],map);
+    })
     return cloneTarget;
 }
 

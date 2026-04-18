@@ -7,7 +7,7 @@ import { getUsersApi, addUserApi, updateUserApi, deleteUserApi, type SystemUser 
 import BaseModal from "../components/BaseModal.vue";
 //引入核心Hook
 import { useForm } from "../hooks/useForm";
-import { use } from "echarts/types/src/extension.js";
+
 
 
 
@@ -15,7 +15,6 @@ import { use } from "echarts/types/src/extension.js";
 const userList = ref<SystemUser[]>([]);
 const isLoading = ref(false);
 const searchQuery = ref('');
-
 
 //初始化加载
 const fetchUsers = async () => {
@@ -81,11 +80,6 @@ const handleDelete = (row: SystemUser) => {
     }).catch(() => {
         console.log('取消删除');
     })
-}
-
-const handleBlurCheck = async () => {
-    const name = editingUser.value?.username;
-    if (!name || editingUser.value?.id) return;
 }
 //保存回调
 const handleSave = () => {

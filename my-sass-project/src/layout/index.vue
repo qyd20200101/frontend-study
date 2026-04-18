@@ -18,9 +18,12 @@ const handleLogout = async () => {
         <aside class="sidebar">
             <div class="logo">资产管理系统</div>
             <nav class="menu">
-                <router-link to="/" class="menu-item">📊 资产面板</router-link>
-                <router-link v-if="userStore.roles.includes('admin')" to="/system" class="menu-item">⚙️
-                    系统设置</router-link>
+                <template v-for="route in userStore.menuRoutes[0].children" :key="route.path">
+                    <router-link :to="'/'+ route.path"
+                    class="menu-item">
+                        {{ route.meta?.title }}
+                    </router-link>
+                </template>
             </nav>
         </aside>
 

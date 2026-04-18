@@ -14,7 +14,7 @@ export const constantRoutes: RouteRecordRaw[] = [
     path: "/login",
     name: "Login",
     component: () => import("../views/Login.vue"),
-    meta: { title: "登录" },
+    meta: { requiresAuth: false,title: "登录" },
   },
   {
     path: "/404",

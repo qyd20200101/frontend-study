@@ -59,6 +59,7 @@ const {
 const {
     formData: editingItem,
     openForm,
+    isDirty,
     submitForm,
     closeForm
 } = useForm<Project>(updateProjectApi);
@@ -355,7 +356,7 @@ onUnmounted(() => clearInterval(timer));
         </main>
     </div>
     <!-- 编辑模态框(展示深拷贝应用) -->
-    <BaseModal :model-value="!!editingItem" title="editingItem?.id" @:updated:model-value="closeForm"
+    <BaseModal :model-value="!!editingItem" :title="editingItem ? `编辑资产 - ${editingItem.id}` : '编辑'" 
         @confirm="handleSave" @update:model-value="closeForm">
         <div v-if="editingItem" class="asset-edit-form">
             <el-form label-width="80px">
@@ -369,7 +370,13 @@ onUnmounted(() => clearInterval(timer));
                     <ProSelect v-model="editingItem.category" dictCode="asset_type" />
                 </el-form-item>
             </el-form>
-            <p class="tip">温馨提示：修改 5万条数据中的任意一项都会实时同步。</p>
+            <div class="sandbox-tip" :class="{'is-dirty': isDirty}">
+                <el-icon><InfoFilled></InfoFilled></el-icon>
+                <span v-if="!isDirty">当前数据未修改，受到沙箱保护</span>
+                <span v-else>检测到修改！点击确认后同步至表格</span>
+                 <p class="tip">温馨提示：修改 5万条数据中的任意一项都会实时同步。</p>
+            </div>
+           
         </div>
     </BaseModal>
 </template>
@@ -561,5 +568,26 @@ onUnmounted(() => clearInterval(timer));
     font-family: 'Courier New', Courier, monospace;
     font-weight: bold;
     color: #f56c6c;
+}
+/* DataManager.vue 样式 */
+
+.sandbox-tip {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f4f4f5;
+    color: #909399;
+    border-radius: 4px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+/* 发生修改时，提示框变成亮眼的橙色 */
+.sandbox-tip.is-dirty {
+    background-color: #fdf6ec;
+    color: #e6a23c;
+    border: 1px solid #faecd8;
 }
 </style>
