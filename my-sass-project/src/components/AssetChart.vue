@@ -10,9 +10,14 @@ const props = defineProps<{
 const chartRef = ref<HTMLElement | null>(null);
 let myChart: echarts.ECharts | null = null;
 
+const emit = defineEmits(['bar-click']);
 const initChart = () => {
     if (!chartRef.value) return;
     myChart = echarts.init(chartRef.value);
+
+    myChart.on('click',(params) =>{
+        emit('bar-click',params.name);
+    })
     //封装图标组件时，父子组件的数据结构不一样时
     /*
     /组件纯洁性:
@@ -45,13 +50,16 @@ const handleResize = () => {
     myChart?.resize();
 }
 //监听数据变化刷新图表
-watch(() => props.data, () => {
+watch(() => props.data, (newData) => {
+    if (newData.length > 100) {
+        console.warn('数据量过大，图标进入限流模式');
+    }
     myChart?.setOption({
         xAxis: { data: props.data.map(i => i.name) },
         //数据归一化：父组件负责将业务数据（budget）“翻译”成子组件认识的标准数据value
         series: [{ data: props.data.map(i => i.value) }]
     });
-}, { deep: true });
+}, { deep: false });
 onMounted(() => {
     initChart();
     window.addEventListener('resize', handleResize);

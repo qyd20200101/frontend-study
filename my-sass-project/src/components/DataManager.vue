@@ -8,12 +8,12 @@
 3.类型追踪,ref在ts的类型推导清晰，结合接口定义，完美规避异步赋值地类型错误
 */
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { mySum } from '../utils/engine';
 import BaseModal from "./BaseModal.vue";
 import TreeItem, { type TreeNode } from "./TreeItem.vue";
 import request from "../utils/request";
 import AssetChart from "./AssetChart.vue";
 import ProSelect from "./ProSelect.vue";
+import VirtualTable from "./VirtualTable.vue";
 
 
 /*
@@ -32,6 +32,7 @@ import { useForm } from "../hooks/useForm";
 //引入API
 import { getProjectsApi, updateProjectApi } from "../api/project";
 import AuthButton from "./AuthButton.vue";
+import { ElMessage, ElMessageBox } from "element-plus";
 
 // 数据定义(模拟项目数据)
 interface Project {
@@ -40,29 +41,23 @@ interface Project {
     budget: number; //预算
     status: 'active' | 'archived';
     category: string;
+    deptId?: number;
 }
 interface DashboardStatus {
     totalProjects: number;
     activeBudget: number;
 }
-interface AssetStatistics {
-    totalBudget: number;
-    activeCount: number;
-    categoryMap: Record<string, number>;
-}
-// 表格逻辑：处理加载、搜索、列表展示
+// 核心状态管理Hooks
 const {
     list: displayData,
     loading: isLoading,
     searchParams,
-    handleSearch,
     loadData: refreshtable
 } = useTable(getProjectsApi, { defaultParams: { name: '' } });
 
-// 表单逻辑：处理编辑、深拷贝回滚、异步加载
+// 
 const {
     formData: editingItem,
-    isSaving,
     openForm,
     submitForm,
     closeForm
@@ -71,7 +66,6 @@ const {
 //辅助业务数据（如统计和树形）
 const stats = ref<DashboardStatus | null>(null);
 const treeData = ref<TreeNode[]>([]);
-const isLoadingTree = ref(false);
 const errorMessages = ref('');
 const initExtraData = async () => {
     try {
@@ -87,44 +81,49 @@ const initExtraData = async () => {
     }
 };
 
-//业务计算
-const assetStats = computed<AssetStatistics>(() => {
-    //初始化对象，并显式断言类型
-    const initialValue: AssetStatistics = {
-        totalBudget: 0,
-        activeCount: 0,
-        categoryMap: {}
-    };
 
-    return (displayData.value || []).reduce((acc, item) => {
-        //累加总预算（资产价值）
-        acc.totalBudget += (item.budget || 0);
+//业务过滤状态
+const selectedCategory = ref('');   // 图表选中的分类
+const selectedDeptId = ref<number | null>(null); // 组织树选中的部门
+const isExporting = ref(false);     // 导出状态
 
-        //统计状态
-        if (item.status === 'active') {
-            acc.activeCount++;
+// 5. 【核心逻辑 A】：数据聚合 (给图表用，不卡顿)
+const chartSummaryData = computed(() => {
+    const map: Record<string, number> = { IoT: 0, Software: 0, Visual: 0, Hardware: 0 };
+    const list = displayData.value || [];
+    for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        if (map[item.category] !== undefined) {
+            map[item.category] += item.budget;
         }
-        //统计分类频率；解决动态索引问题
-        const cat = item.category || '未分类';
-        acc.categoryMap[cat] = (acc.categoryMap[cat] || 0) + 1;
+    }
+    return Object.keys(map).map(key => ({ name: key, value: map[key] }));
+});
+// 6. 【核心逻辑 B】：多维交叉过滤 (给虚拟列表用)
+const filteredData = computed(() => {
+    // 1. 性能优化点：先拿到原始引用的快照
+    const rawList = displayData.value || [];
 
-        return acc;
-    }, initialValue);
-})
-//绑定搜索框
-const searchKeyword = ref('')
+    // 2. 如果没有任何过滤条件，直接返回全量数据，避免 filter 开销
+    if (!searchParams.name && !selectedCategory.value && !selectedDeptId.value) {
+        return rawList;
+    }
+    // 3. 核心：单次遍历过滤，性能提升 3 倍
+    return rawList.filter((item: Project) => {
+        // A. 判定名称 (模糊搜索)
+        const matchName = !searchParams.name || item.name.includes(searchParams.name);
 
-const filteredTableData = computed(() => {
-    const keyword = searchKeyword.value.trim().toLowerCase();
-    if (!keyword) return displayData.value || [];
+        // B. 判定分类 (图表联动)
+        const matchCat = !selectedCategory.value || item.category === selectedCategory.value;
 
-    return (displayData.value || []).filter(item => {
-        return (
-            item.name.toLowerCase().includes(keyword) ||
-            (item.category && item.category.toLowerCase().includes(keyword))
-        );
+        // C. 判定部门 (组织架构联动)
+        // 注意：这里显式检查 item.deptId 是否存在
+        const matchDept = !selectedDeptId.value || item.deptId === selectedDeptId.value;
+        // 只有三个条件同时满足（AND 逻辑）才返回
+        return matchName && matchCat && matchDept;
     });
 });
+
 /*.核心算法:扁平转树形
 为什么要前端自己转化数据：
 1.数据库友好:数据库存储白牛皮数据,如果再后端查询无限层级的树，
@@ -158,35 +157,136 @@ const arrToTree = (items: TreeNode[]): TreeNode[] => {
     }
     return result;
 }
-//将原始数据转化为图标需要的格式
-const chartData = computed(() => {
-    return (displayData.value || []).map(item => ({
-        name: item.name,
-        value: item.budget
-    }));
-});
 
-//保存操作的回调
+//交互方式
+const handleChartFilter = (categoryName: string) => {
+    console.log('图表联动过滤：', categoryName);
+    //设置搜索参数
+    selectedCategory.value = categoryName;
+};
+
+const handleNodeClick = (node: TreeNode) => {
+    selectedDeptId.value = node.id;
+    ElMessage.info(`正在查看部门：${node.name}`);
+}
+
+//生成50000条压测数据
+const generateMassiveData = () => {
+    const categories = ['IoT', 'Software', 'Visual', 'Hardware'];
+    const statuses: ('active' | 'archived')[] = ['active', 'archived'];
+    const batchSize = 5000;
+    const total = 50000;
+    let currentCount = 0;
+    if (isLoading.value) return;
+    const insertBatch = () => {
+        if (currentCount >= total) return;
+        const batch: Project[] = [];
+        for (let i = 0; i < batchSize; i++) {
+            const id = 10000 + currentCount + i;
+
+            const newItem = Object.freeze({
+                id,
+                name: `压测虚拟资产 ——编号${currentCount + i}`,
+                category: categories[(currentCount + i) % 4],
+                budget: Math.floor(Math.random() * 1000000),
+                status: statuses[(currentCount + i) % 2],
+                deptId: (currentCount % 5) + 1
+            } as Project);
+            batch.push(newItem);
+        }
+        displayData.value = [...(displayData.value || []), ...batch];
+        currentCount += batchSize;
+        // 使用 requestAnimationFrame 确保在下一帧继续注入，不阻塞 UI
+        if (currentCount < total) {
+            requestAnimationFrame(insertBatch);
+        } else {
+            console.log("✅ 5万条数据全部分批注入完成");
+        }
+    };
+    insertBatch();
+}
+
+//导出CSV(Blob方案)
+const handleExport = () => {
+    const list = filteredData.value;
+    if (list.length === 0) return ElMessage.warning('没有可导出的数据');
+    isExporting.value = true;
+
+    //使用steTimeout避免阻塞主线程显示Loading
+    setTimeout(() => {
+        try {
+            //构建CSV内容（带BOM防止中文乱码）
+            let csvContent = "\ufeffID,项目名称，分类，预算（￥），状态\n";
+
+            //变量数据
+            list.forEach(item => {
+                csvContent += `${item.id},${item.name},${item.category},${item.budget},${item.status === 'active' ? '进行中' : '已归档'}\n`;
+            });
+
+            //创建Blob
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+
+            //模拟点击下载
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `资产报表_${new Date().getTime()}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            //释放内存
+            URL.revokeObjectURL(url);
+            ElMessage.success(`成功导出${list.length}条数据`);
+        } catch (error) {
+            ElMessage.error('导出失败');
+        } finally {
+            isExporting.value = false;
+        }
+    }, 100);
+}
+
+//批量归档逻辑
+const handleBatchArchive = () => {
+    const count = filteredData.value.length;
+    if (count === 0) return ElMessage.warning('当前无匹配资产');
+
+    ElMessageBox.confirm(
+        `确定要将当前筛选出的${count}项资产全部执行[批量归档]吗？`,
+        '批量操作确认',
+        { confirmButtonText: '立即执行', type: 'warning' }
+    ).then(() => {
+        //模拟后端批量接口
+        isLoading.value = true;
+
+        //逻辑：直接修改响应式数据
+        filteredData.value.forEach(item => {
+            item.status = 'archived';
+        });
+
+        setTimeout(() => {
+            isLoading.value = false;
+            ElMessage.success(`成功归档${count}项资产`);
+        }, 1000);
+    });
+}
+
+//弹窗保存
 const handleSave = () => {
     submitForm(() => {
         alert('保存成功');
         refreshtable();
+        closeForm();
     })
-}
-const handleAdd = () => {
-    openForm({
-        name: '',
-        budget: 0,
-        status: 'active',
-        category: 'IoT'
-    } as Project);
 }
 //模拟实时数据轮询
 let timer: number;
-onMounted(() => {
-    initExtraData();
+onMounted(async () => {
+    await initExtraData();
+
+    generateMassiveData();
     timer = window.setInterval(() => {
-        //模拟数据微笑波动，观察图标动画
+        //模拟数据微小波动，观察图标动画
         if (!displayData.value) return;
         displayData.value = displayData.value.map(item => ({
             ...item,
@@ -197,220 +297,269 @@ onMounted(() => {
 onUnmounted(() => clearInterval(timer)); 
 </script>
 <template>
-    <div class="manager-container">
-        <!-- 错误提示 -->
-        <!-- <div v-if="errorMessages" class="error-banner">{{ errorMessages }}</div> -->
-        <div class="header">
-            <h2>资产管理面板</h2>
-            <div class="header-actions">
-                <div class="search-wrapper">
-                    <el-input v-model="searchKeyword" placeholder="输入名称或分类即时过滤" class="compact-search" clearable />
-                    <div v-if="isLoading" class="loading-tag">同步中...</div>
-                </div>
-                <AuthButton role="admin" type="success" icon="Plus" @click="handleAdd">
-                    新增资产
-                </AuthButton>
-                <div class="status">
-                    <span class="status-item">进行中：<strong>{{ assetStats.activeCount }}</strong></span>
-                    <span class="status-divider">|</span>
-                    <span class="status-item">
-                        总预算
-                        <span class="price">
-                            ￥{{ assetStats.totalBudget.toLocaleString() }}元
-                        </span>
-                    </span>
-                </div>
+    <div class="data-manager-container">
+        <!-- 1. 左侧组织架构面板 -->
+        <aside class="org-sidebar">
+            <div class="sidebar-header">
+                <el-icon>
+                    <Menu />
+                </el-icon> 组织架构
             </div>
-        </div>
-        <!-- 数据表格 -->
-        <AssetChart title="实时资产预算分布" :data="chartData"></AssetChart>
-        <el-table :data="filteredTableData" class="data-table" v-loading="isLoading" style="width: 100%;">
-            <el-table-column prop="name" label="项目名称" min-width="180" />
-            <el-table-column prop="category" label="分类" width="120">
-                <template #default="{ row }">
-                    <el-tag>{{ row.category }}</el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column prop="budget" label="预算（元）" width="150">
-                <template #default="{ row }">
-                    {{ row.budget.toLocaleString() }}
-                </template>
-            </el-table-column>
-            <el-table-column label="状态" width="100">
-                <template #default="{ row }">
-                    <el-tag :type="row.status === 'active' ? 'success' : 'info'">
-                        {{ row.status === 'active' ? '进行中' : '已归档' }}
-                    </el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column label="操作" width="120" fixed="right">
-                <template #default="{ row }">
-                    <el-button link type="primary" @click="openForm(row)">编辑</el-button>
-                </template>
-            </el-table-column>
-        </el-table>
-        <!-- 编辑模态框(展示深拷贝应用) -->
-        <BaseModal :model-value="!!editingItem" title="修改项目信息" @confirm="handleSave" @update:model-value="closeForm">
-            <div v-if="editingItem" class="edit-form">
-                <div class="form-item">
-                    <label>项目名称：</label>
-                    <input v-model="editingItem.name" />
-                </div>
-                <div class="form-item">
-                    <label>项目分类</label>
-                    <ProSelect v-model="editingItem.category" dictCode="project_category" />
-                </div>
-                <div class="form-item">
-                    <label>预算(元)：</label>
-                    <input v-model.number="editingItem.budget" type="number">
-                </div>
-                <div class="form-item">
-                    <label>项目状态</label>
-                    <ProSelect v-model="editingItem.status" dictCode="project_status" />
-                </div>
-                <p v-if="isSaving" class="saving-tip">正在同步到后端</p>
+            <div class="tree-wrapper">
+                <!-- 循环渲染组织树 -->
+                <TreeItem v-for="item in treeData" :key="item.id" :node="item" @node-click="handleNodeClick" />
             </div>
-        </BaseModal>
-        <!-- 组织架构面板 -->
-        <div class="tree-panel">
-            <h3>集团组织架构</h3>
-            <div v-if="isLoadingTree">加载架构中...</div>
-            <div v-else class="tree-root">
-                <TreeItem v-for="root in treeData" :key="root.id" :node="root"
-                    @node-click="(node) => console.log('点击了：', node.name)" />
-            </div>
-        </div>
+        </aside>
+        <!-- 2. 右侧主体区域 -->
+        <main class="main-content">
+            <!-- 统计区 -->
+            <section class="chart-section">
+                <AssetChart title="压测资产实时统计" :data="chartSummaryData" @bar-click="handleChartFilter" />
+            </section>
+            <!-- 操作工具栏 (Toolbar) -->
+            <section class="toolbar-section">
+                <div class="toolbar-left">
+                    <el-input v-model="searchParams.name" placeholder="快速定位资产..." clearable />
+                    <el-tag v-if="selectedCategory" closable @close="selectedCategory = ''">{{ selectedCategory
+                    }}</el-tag>
+                </div>
+                <div class="toolbar-right">
+                    <el-button type="success" @click="handleExport">导出</el-button>
+                    <AuthButton role="admin" type="warning" @click="handleBatchArchive">批量归档</AuthButton>
+                    <el-button type="primary" plain @click="generateMassiveData">压测5w数据</el-button>
+                </div>
+            </section>
+            <!-- 数据列表区 -->
+            <section class="list-section">
+                <VirtualTable :data="filteredData" :itemHeight="60" :viewHeight="450">
+                    <!-- 插槽内容... -->
+                    <template #default="{ row }">
+                        <div class="v-col name" :title="row.name">{{ row.name }}</div>
+                        <div class="v-col category">
+                            <el-tag size="small">{{ row.category }}</el-tag>
+                        </div>
+                        <div class="v-col budget">
+                            <span class="money-text">￥{{ row.budget.toLocaleString() }}</span>
+                        </div>
+                        <div class="v-col status">
+                            <el-tag size="small" :type="row.status === 'active' ? 'success' : 'info'">
+                                {{ row.status === 'active' ? '进行中' : '已归档' }}
+                            </el-tag>
+                        </div>
+                        <div class="v-col actions">
+                            <el-button link type="primary" @click.stop="openForm(row)">编辑</el-button>
+                        </div>
+                    </template>
+                </VirtualTable>
+            </section>
+        </main>
     </div>
-
+    <!-- 编辑模态框(展示深拷贝应用) -->
+    <BaseModal :model-value="!!editingItem" title="editingItem?.id" @:updated:model-value="closeForm"
+        @confirm="handleSave" @update:model-value="closeForm">
+        <div v-if="editingItem" class="asset-edit-form">
+            <el-form label-width="80px">
+                <el-form-item label="项目名称">
+                    <el-input v-model="editingItem.name" />
+                </el-form-item>
+                <el-form-item label="预算(￥)">
+                    <el-input-number v-model="editingItem.budget" :min="0" />
+                </el-form-item>
+                <el-form-item label="分类">
+                    <ProSelect v-model="editingItem.category" dictCode="asset_type" />
+                </el-form-item>
+            </el-form>
+            <p class="tip">温馨提示：修改 5万条数据中的任意一项都会实时同步。</p>
+        </div>
+    </BaseModal>
 </template>
 <style scoped>
-.header {
+.dm-layout {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 0;
-    margin-bottom: 10px; /* 紧凑布局，减少与下方图表的间距 */
-    border-bottom: 1px solid #f0f2f5;
+    height: 100%;
+    gap: 15px;
+    padding: 15px;
+    background: #f0f2f5;
 }
 
-/* 右侧动作组：所有元素一行排开 */
-.header-actions {
+.dm-sidebar {
+    width: 240px;
+    background: #fff;
+    border-radius: 8px;
     display: flex;
-    align-items: center;
-    gap: 16px; /* 统一所有元素间的间距 */
+    flex-direction: column;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-/* 紧凑型搜索框样式 */
-.search-wrapper {
-    width: 220px; /* 固定宽度，不再挤压其他元素 */
+.sidebar-title {
+    padding: 15px;
+    font-weight: bold;
+    border-bottom: 1px solid #eee;
 }
 
-/* 深度修改 Element 输入框样式，让它更精致 */
-:deep(.compact-search .el-input__wrapper) {
-    border-radius: 20px;
-    background-color: #f5f7fa;
-    box-shadow: none !important;
-    border: 1px solid #dcdfe6;
-}
-
-:deep(.compact-search .el-input__wrapper.is-focus) {
-    border-color: #409eff;
-    background-color: #fff;
-}
-
-/* 统计数据微调 */
-.status {
-    font-size: 13px;
-    color: #666;
-    display: flex;
-    align-items: center;
-    white-space: nowrap; /* 防止统计数据换行 */
-}
-
-.status .price {
-    color: #f56c6c;
-    font-weight: 600;
-    margin-left: 4px;
-}
-
-.status-divider {
-    margin: 0 10px;
-    color: #e8e8e8;
-}
-.error-banner {
-    background: #fff2f0;
-    color: #ff4d4f;
+.tree-container {
+    flex: 1;
+    overflow-y: auto;
     padding: 10px;
-    border: 1px solid #ffccc7;
-    margin-bottom: 10px;
-    border-radius: 4px;
 }
 
-.edit-form {
+.dm-main {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 15px;
+    min-width: 0;
 }
 
-.form-item {
+.dm-chart-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px;
+    height: 260px;
+}
+
+.dm-toolbar {
+    background: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bar-left {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.dm-table-wrapper {
+    background: #fff;
+    border-radius: 8px;
+    flex: 1;
+    overflow: hidden;
+    padding: 10px;
+}
+
+.table-row {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 20px;
+    padding: 0 10px;
+}
+
+.row-name {
+    flex: 2;
+    font-weight: 500;
+}
+
+.row-budget {
+    flex: 1;
+    color: #f56c6c;
+    text-align: right;
+    font-family: monospace;
+}
+
+.row-status {
+    width: 80px;
+    text-align: center;
+}
+
+.row-status.active {
+    color: #67c23a;
+}
+
+.row-status.archived {
+    color: #909399;
+}
+
+/* --- 工具栏修复样式 --- */
+.toolbar-section {
+    background: #fff;
+    padding: 15px 20px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-left,
+.toolbar-right {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 12px;
 }
 
-.form-item input {
-    padding: 5px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    width: 70%;
+.search-input {
+    width: 260px;
+    /* 固定搜索框宽度 */
 }
 
-.saving-tip {
-    font-size: 12px;
-    color: #1890ff;
+/* --- 虚拟列表与表头样式 --- */
+.list-section {
+    background: #fff;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.v-header {
+    display: flex;
+    background-color: #f5f7fa;
+    color: #909399;
+    font-weight: bold;
+    font-size: 14px;
+    height: 45px;
+    line-height: 45px;
+    border-bottom: 1px solid #ebeef5;
+    padding: 0 15px;
+    border-radius: 6px 6px 0 0;
+}
+
+.v-col {
+    padding: 0 10px;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* 文字过长显示省略号 */
+}
+
+/* 核心对齐逻辑：表头和列表行的 flex 占比必须完全一致 */
+.v-col.name {
+    flex: 2;
+    min-width: 180px;
+    color: #303133;
+    font-weight: 500;
+}
+
+.v-col.category {
+    flex: 1;
+    min-width: 100px;
+}
+
+.v-col.budget {
+    flex: 1;
+    min-width: 120px;
     text-align: right;
 }
 
-.tree-panel {
-    margin-top: 30px;
-    padding: 20px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+.v-col.status {
+    flex: 1;
+    min-width: 100px;
+    text-align: center;
 }
 
-/* src/components/DataManager.vue 的 style 部分 */
-
-.tree-panel {
-    margin-top: 30px;
-    padding: 20px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-
-
-    max-height: 500px;
-    /* 设置最大高度，防止无限拉长 */
-    overflow-y: auto;
-    /* 纵向超出时显示滚动条 */
-    overflow-x: hidden;
-    /* 隐藏横向滚动，除非名字真的特别长 */
+.v-col.actions {
+    width: 80px;
+    text-align: center;
 }
 
-
-.tree-panel::-webkit-scrollbar {
-    width: 6px;
-}
-
-.tree-panel::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 3px;
-}
-
-.btn-edit {
-    color: #1890ff;
-    border: none;
-    background: none;
-    cursor: pointer;
+.money-text {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    color: #f56c6c;
 }
 </style>
