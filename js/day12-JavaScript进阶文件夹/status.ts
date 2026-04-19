@@ -14,6 +14,7 @@ type AssetStatus = 'pending'| 'running'| 'scrapped';
 interface Project{
     name: string;
     status: AssetStatus;
+    deptId?: number
 }
 //2.类型守卫函数(Type Guard)
 function canEdit(project:Project): boolean {

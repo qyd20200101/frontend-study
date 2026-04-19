@@ -8,7 +8,7 @@ export interface ProjectItem{
     name: string;
     budget: number;
     status: 'active'| 'archived'| 'repair',
-    category:string
+    category:string,
 }
 
 //获取项目接口数据
