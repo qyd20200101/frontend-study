@@ -111,7 +111,7 @@ service.interceptors.response.use(
             config.headers["Authorization"] = `Bearer ${newToekn}`;
             return service(config);
           })
-          .catch((err) => {
+          .catch(() => {
             //如果refreshToken也过期，只能强制登出
             userStore.logout();
             return Promise.reject(new Error('会话过期，请重新登陆'));
