@@ -7,7 +7,7 @@ export interface ProjectItem{
     id:number;
     name: string;
     budget: number;
-    status: 'active'| 'archived',
+    status: 'active'| 'archived'| 'repair',
     category:string
 }
 

@@ -39,7 +39,7 @@ interface Project {
     id: number | number;
     name: string;
     budget: number; //预算
-    status: 'active' | 'archived';
+    status: 'active' | 'archived' | 'repair';
     category: string;
     deptId?: number;
 }
@@ -64,6 +64,12 @@ const {
     closeForm
 } = useForm<Project>(updateProjectApi);
 
+//状态映射表
+const statusConfig = {
+    active: {label: '进行中',color: '#67c23a', icon: 'CircleCheck'},
+    repair: {label: '维修中',type: 'danger', color: '#f55c6c',icon: 'Warning'},
+    archived: {label: '已归档',color: '#909399', icon: 'CircleClose'},
+};
 //辅助业务数据（如统计和树形）
 const stats = ref<DashboardStatus | null>(null);
 const treeData = ref<TreeNode[]>([]);
@@ -82,7 +88,26 @@ const initExtraData = async () => {
     }
 };
 
+//资产状态转换器
+const transitionStatus =(row: Project,nextStatus: Project['status']) =>{
+    //业务校验:已归档的资产不能再报修
+    if (row.status === 'archived' && nextStatus=== 'repair') {
+        return ElMessage.error('已归档资产无法发起报修');
+    }
 
+    //交互确认
+    const actionMap = {repair: '发起报修',active: '恢复运行',archived: '执行归档'};
+
+    ElMessageBox.confirm(`确定要对资产[${row.name}]执行${actionMap[nextStatus]}操作吗？`,`业务确认`)
+    .then(() =>{
+        row.status = nextStatus;
+
+        //副作用处理：记录一条简单的模拟日志
+        console.log(`[日志]资产${row.id}状态变更为:${nextStatus}`);
+        ElMessage.success('操作已生效');
+        
+    }).catch(() =>{})
+}
 //业务过滤状态
 const selectedCategory = ref('');   // 图表选中的分类
 const selectedDeptId = ref<number | null>(null); // 组织树选中的部门
@@ -271,6 +296,22 @@ const handleBatchArchive = () => {
         }, 1000);
     });
 }
+// 重置所有过滤条件
+const resetAllFilters = () => {
+    // 1. 重置搜索框 (来自 useTable 的 searchParams)
+    searchParams.name = '';
+
+    // 2. 重置图表选中分类
+    selectedCategory.value = '';
+
+    // 3. 重置组织树选中部门
+    selectedDeptId.value = null;
+
+    // 4. (可选) 如果你还有其他状态，如 filterStatus (radio 切换)
+    // filterStatus.value = 'all';
+
+    ElMessage.success('已恢复全量数据视角');
+};
 
 //弹窗保存
 const handleSave = () => {
@@ -280,6 +321,31 @@ const handleSave = () => {
         closeForm();
     })
 }
+
+const handleCancel = () => {
+    // isDirty 是由 useForm 提供的响应式变量，标识表单内容是否被动过
+    if (isDirty.value) {
+        ElMessageBox.confirm(
+            '检测到表单内容已修改，离开将丢失未保存的数据。确定取消吗？',
+            '放弃修改',
+            {
+                confirmButtonText: '确定放弃',
+                cancelButtonText: '再想想',
+                type: 'warning',
+            }
+        ).then(() => {
+            // 用户确认放弃，调用 useForm 的关闭逻辑，它会自动重置表单并关闭弹窗
+            closeForm();
+        }).catch(() => {
+            // 用户点错了，留在当前弹窗
+            console.log('用户取消了关闭操作');
+        });
+    } else {
+        // 数据没动过，直接关，不打扰用户
+        closeForm();
+    }
+};
+
 //模拟实时数据轮询
 let timer: number;
 onMounted(async () => {
@@ -287,13 +353,9 @@ onMounted(async () => {
 
     generateMassiveData();
     timer = window.setInterval(() => {
-        //模拟数据微小波动，观察图标动画
-        if (!displayData.value) return;
-        displayData.value = displayData.value.map(item => ({
-            ...item,
-            budget: item.budget + (Math.random() > .5 ? 1000 : -1000),
-        }));
-    }, 5000);
+        const list = displayData.value;
+        if (!list || list.length === 0) return;
+    })
 });
 onUnmounted(() => clearInterval(timer)); 
 </script>
@@ -321,8 +383,6 @@ onUnmounted(() => clearInterval(timer));
             <section class="toolbar-section">
                 <div class="toolbar-left">
                     <el-input v-model="searchParams.name" placeholder="快速定位资产..." clearable />
-                    <el-tag v-if="selectedCategory" closable @close="selectedCategory = ''">{{ selectedCategory
-                    }}</el-tag>
                 </div>
                 <div class="toolbar-right">
                     <el-button type="success" @click="handleExport">导出</el-button>
@@ -330,34 +390,56 @@ onUnmounted(() => clearInterval(timer));
                     <el-button type="primary" plain @click="generateMassiveData">压测5w数据</el-button>
                 </div>
             </section>
+            <div class="active-filter" v-if="selectedDeptId || selectedCategory">
+                <span class="label">当前过滤：</span>
+                <el-tag v-if="selectedDeptId" closable @close="selectedDeptId = null">部门ID：{{ selectedDeptId }}</el-tag>
+                <el-tag v-if="selectedCategory" type="warning" closable @close="selectedCategory = ''">分类：{{
+                    selectedCategory }}</el-tag>
+                <el-button link type="primary" @click="resetAllFilters">重置全部</el-button>
+            </div>
             <!-- 数据列表区 -->
             <section class="list-section">
                 <VirtualTable :data="filteredData" :itemHeight="60" :viewHeight="450">
                     <!-- 插槽内容... -->
                     <template #default="{ row }">
-                        <div class="v-col name" :title="row.name">{{ row.name }}</div>
-                        <div class="v-col category">
-                            <el-tag size="small">{{ row.category }}</el-tag>
-                        </div>
-                        <div class="v-col budget">
-                            <span class="money-text">￥{{ row.budget.toLocaleString() }}</span>
-                        </div>
-                        <div class="v-col status">
-                            <el-tag size="small" :type="row.status === 'active' ? 'success' : 'info'">
-                                {{ row.status === 'active' ? '进行中' : '已归档' }}
+                       <div class="table-row">
+                        <span class="row-name">{{ row.name }}</span>
+
+                        <!-- 动态状态标签 -->
+
+                        <div class="row-meta">
+                            <el-tag :color="statusConfig[row.status].color" effect="dark" size="small">
+                                {{ statusConfig[row.status].label }}
                             </el-tag>
+                            <span class="row-budget">￥{{ row.budget.toLocaleString() }}</span>
                         </div>
-                        <div class="v-col actions">
-                            <el-button link type="primary" @click.stop="openForm(row)">编辑</el-button>
-                        </div>
+                        <!-- 智能操作组：根据当前状态显示不同按钮 -->
+                         <div class="row-ops">
+                            <el-button link type="primary" @click="openForm(row)">编辑</el-button>
+                            <!-- 如果正在运行，显示报修 -->
+                             <el-button
+                             v-if="row.status ==='active'"
+                             link type="warning"
+                             @click="transitionStatus(row,'repair')">
+                            报修
+                             </el-button>
+                             <!-- 如果正在维修，显示修复 -->
+                              <el-button
+                              v-if="row.status === 'repair'"
+                              link type="success"
+                              @click="transitionStatus(row,'active')">
+                             修复
+                              </el-button>
+                         </div>
+                       </div>
                     </template>
                 </VirtualTable>
             </section>
         </main>
     </div>
     <!-- 编辑模态框(展示深拷贝应用) -->
-    <BaseModal :model-value="!!editingItem" :title="editingItem ? `编辑资产 - ${editingItem.id}` : '编辑'" 
-        @confirm="handleSave" @update:model-value="closeForm">
+    <BaseModal :model-value="!!editingItem" :title="editingItem ? `编辑资产 - ${editingItem.id}` : '编辑'"
+        @confirm="handleSave" @update:model-value="closeForm" @cancel="handleCancel">
         <div v-if="editingItem" class="asset-edit-form">
             <el-form label-width="80px">
                 <el-form-item label="项目名称">
@@ -370,13 +452,15 @@ onUnmounted(() => clearInterval(timer));
                     <ProSelect v-model="editingItem.category" dictCode="asset_type" />
                 </el-form-item>
             </el-form>
-            <div class="sandbox-tip" :class="{'is-dirty': isDirty}">
-                <el-icon><InfoFilled></InfoFilled></el-icon>
+            <div class="sandbox-tip" :class="{ 'is-dirty': isDirty }">
+                <el-icon>
+                    <InfoFilled></InfoFilled>
+                </el-icon>
                 <span v-if="!isDirty">当前数据未修改，受到沙箱保护</span>
                 <span v-else>检测到修改！点击确认后同步至表格</span>
-                 <p class="tip">温馨提示：修改 5万条数据中的任意一项都会实时同步。</p>
+                <p class="tip">温馨提示：修改 5万条数据中的任意一项都会实时同步。</p>
             </div>
-           
+
         </div>
     </BaseModal>
 </template>
@@ -491,6 +575,64 @@ onUnmounted(() => clearInterval(timer));
     align-items: center;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
+/* 1. 每一行的基础容器 */
+.table-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* 左右撑开 */
+    width: 100%;
+    height: 100%;
+    padding: 0 20px;
+    box-sizing: border-box;
+    border-bottom: 1px solid #f0f2f5;
+    background: #fff;
+}
+
+/* 2. 资产名称：占据剩余所有空间，并防止溢出 */
+.row-name {
+    flex: 1; /* 核心：自动占据左侧所有空间 */
+    font-weight: 500;
+    color: #303133;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 20px;
+}
+
+/* 3. 状态与金额的包装容器：固定宽度，确保垂直对齐 */
+.row-meta {
+    width: 280px; /* 核心：固定宽度，让右侧内容不再晃动 */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* 靠右对齐 */
+    gap: 15px; /* 标签和金额的间距 */
+}
+
+/* 4. 预算金额：固定宽度，数字等宽对齐 */
+.row-budget {
+    width: 120px;
+    text-align: right;
+    color: #f56c6c;
+    font-family: 'Courier New', Courier, monospace; /* 等宽字体 */
+    font-weight: bold;
+    font-size: 15px;
+}
+
+/* 5. 操作按钮组：固定宽度 */
+.row-ops {
+    width: 160px; /* 固定宽度 */
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-left: 20px;
+}
+
+/* 6. 状态标签的宽度锁定（可选，让标签也等宽） */
+.row-meta .el-tag {
+    width: 70px;
+    text-align: center;
+}
 
 .toolbar-left,
 .toolbar-right {
@@ -569,6 +711,7 @@ onUnmounted(() => clearInterval(timer));
     font-weight: bold;
     color: #f56c6c;
 }
+
 /* DataManager.vue 样式 */
 
 .sandbox-tip {

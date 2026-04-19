@@ -7,6 +7,7 @@ import type {
   AxiosError,
   AxiosRequestConfig,
 } from "axios";
+import { ElMessage, ElMessageBox } from "element-plus";
 /*
 封装思路：
 1.数据扁平化：在响应拦截器通过response.data.data进行脱壳，直接拿到业务实体
@@ -84,7 +85,16 @@ service.interceptors.response.use(
     if (code === 200) {
       return data;
     }
-
+       switch(code) {
+        case 4003: 
+            ElMessageBox.alert('该资产正在被其他管理员操作，请稍后刷新。', '业务锁定');
+            break;
+        case 5001:
+            ElMessage.error('系统检测到异常操作，已记录日志');
+            break;
+        default:
+            ElMessage.error(message || '未知业务错误');
+    }
     //场景：处理特定错误码，如401登录过期
     if (code === 401) {
       const config = response.config;

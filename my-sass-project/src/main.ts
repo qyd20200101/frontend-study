@@ -7,6 +7,7 @@ import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate"
 import { permission } from "./directive/permission"
 import * as ElementPlusIconsVue from "@element-plus/icons-vue"
+import 'element-plus/dist/index.css'
 
 // 1. 先创建实例
 const app = createApp(App)
