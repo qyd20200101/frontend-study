@@ -1,4 +1,5 @@
 import request from "../utils/request";
+import type { Project } from "../types/asset";
 
 // 定义数据类型(Model)
 // 可选性冲突：status为固定值，?:可能没有值，导致页面方法调用时ts防止崩溃报错
@@ -13,7 +14,7 @@ export interface ProjectItem{
 
 //获取项目接口数据
 export const getProjectsApi = (params?:any) =>{
-    return request<ProjectItem []>({
+    return request<Project []>({
         url: '/projects',
         method: 'get',
         params
