@@ -260,76 +260,110 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
 </template>
 
 <style scoped>
-/* 1. 布局骨架 */
+/* 1. 主容器：禁止滚动，锁定高度 */
 .dm-layout {
-    display: flex; height: calc(100vh - 84px); gap: 15px; padding: 15px;
-    background: #f0f2f5; box-sizing: border-box; overflow: hidden;
-}
-
-.dm-sidebar {
-    width: 220px; background: #fff; border-radius: 12px;
-    display: flex; flex-direction: column; flex-shrink: 0; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
-}
-
-.dm-main { flex: 1; display: flex; flex-direction: column; gap: 15px; min-width: 0; }
-
-/* 2. 模块样式 */
-.dm-chart-card { background: #fff; border-radius: 12px; padding: 10px 20px; height: 180px; flex-shrink: 0; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05); }
-.dm-toolbar { background: #fff; padding: 12px 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ebeef5; flex-shrink: 0; }
-.search-input { width: 260px; }
-
-/* 3. 🚀 关键：表格对齐逻辑 */
-.dm-table-wrapper {
-    background: #fff; border-radius: 12px; flex: 1; display: flex; flex-direction: column;
-    overflow: hidden; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05); border: 1px solid #ebeef5;
-}
-
-.v-table-header {
-    display: flex; align-items: center; height: 45px; background: #fafafa;
-    border-bottom: 1px solid #ebeef5; color: #909399; font-weight: bold; font-size: 13px;
-    /* 🚀 关键：预留右侧滚动条宽度(30px)，确保表头与下方内容对齐 */
-    padding: 0 30px 0 15px; box-sizing: border-box;
-}
-
-/* DataManager.vue 核心样式校准 */
-
-.table-row {
     display: flex;
-    align-items: center; /* 🚀 独立负责垂直居中 */
-    height: 100%;        /* 🚀 必须撑满 VirtualTable 提供的 60px */
-    padding: 0 15px;     /* 🚀 独占内边距 */
-    border-bottom: 1px solid #f2f6fc;
+    height: calc(100vh - 84px);
+    gap: 15px;
+    padding: 15px;
+    background: #f0f2f5;
     box-sizing: border-box;
-    width: 100%;
+    overflow: hidden;
 }
 
-/* 确保列容器也拥有高度，辅助居中 */
-.col-check, .col-ops {
+/* 2. 右侧主体：确保模块之间互不干扰 */
+.dm-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
     height: 100%;
+}
+
+/* 3. 图表区：明确界限，防止溢出 */
+.dm-chart-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px;
+    height: 180px; 
+    flex-shrink: 0; /* 🚀 核心：禁止被压缩 */
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+    overflow: hidden; /* 🚀 核心：防止图表遮挡下方 */
+    position: relative;
+    z-index: 1;
+}
+
+/* 4. 工具栏：锁定高度 */
+.dm-toolbar {
+    background: #fff;
+    padding: 0 20px;
+    height: 60px; /* 🚀 核心：锁定高度，不再变动 */
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid #ebeef5;
+    flex-shrink: 0;
+}
+
+/* 5. 列表容器：填满剩余空间 */
+.dm-table-wrapper {
+    background: #fff;
+    border-radius: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 🚀 核心：滚动交给虚拟列表 */
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+    border: 1px solid #ebeef5;
+}
+
+/* 6. 🚀 关键：锁定列宽（表头和行公用） */
+.col-check  { width: 45px;  flex-shrink: 0; display: flex; justify-content: center; }
+.col-name   { flex: 3;      min-width: 200px; padding: 0 10px; font-weight: 500; }
+.col-cate   { width: 100px; flex-shrink: 0; text-align: center; }
+.col-budget { width: 140px; flex-shrink: 0; text-align: right; padding-right: 20px; font-weight: bold; font-family: monospace; }
+.col-status { width: 120px; flex-shrink: 0; text-align: center; }
+.col-ops    { width: 160px; flex-shrink: 0; text-align: right; padding-right: 10px; }
+
+/* 7. 表头：同步 Padding */
+.v-table-header {
     display: flex;
     align-items: center;
+    height: 45px;
+    background: #fafafa;
+    border-bottom: 1px solid #f0f2f5;
+    color: #909399;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 0 15px; /* 🚀 必须与下方行 padding 严格一致 */
+    box-sizing: border-box;
 }
 
-.col-ops {
-    justify-content: flex-end;
-    gap: 8px;
-}
-/* 4. 列宽分配（必须与 Header 严格一致） */
-.col-check { width: 50px; flex-shrink: 0; display: flex; justify-content: center; }
-.col-name { flex: 1; min-width: 180px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
-.col-cate { width: 100px; flex-shrink: 0; text-align: center; }
-.col-budget { width: 140px; flex-shrink: 0; text-align: right; padding-right: 20px; font-weight: bold; font-family: monospace; }
-.col-status { width: 100px; flex-shrink: 0; text-align: center; }
-.col-ops { 
-    width: 160px; flex-shrink: 0; display: flex; 
-    justify-content: flex-end; align-items: center; gap: 8px; 
+/* 8. 列表行：垂直居中 */
+.table-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 0 15px; /* 🚀 必须与上方表头 padding 严格一致 */
+    box-sizing: border-box;
+    border-bottom: 1px solid #f2f6fc;
 }
 
-/* 5. 页脚 */
+/* 9. 页脚统计 */
 .dm-footer {
-    background: #fff; padding: 0 20px; border-top: 1px solid #ebeef5;
-    display: flex; justify-content: space-between; align-items: center;
-    font-size: 13px; color: #606266; height: 45px; flex-shrink: 0;
+    background: #fff;
+    height: 45px;
+    padding: 0 20px;
+    border-top: 1px solid #f0f2f5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #606266;
+    flex-shrink: 0;
 }
-.price { color: #f56c6c; font-weight: bold; }
+
 </style>
