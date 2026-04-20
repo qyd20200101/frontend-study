@@ -1,50 +1,49 @@
-import { ref, onMounted, reactive, toRaw } from "vue";
-import { debounce } from "../utils/engine";
+// src/hooks/useTable.ts
+import { ref } from 'vue';
 
-/*
-通用表格逻辑Hooks
-apiFn:请求接口的函数
-options:配置项
-*/ 
 
-export function useTable<T>(
-    apiFn: (params:any) => Promise<T[]>,
-    options: {immediate?:boolean; defaultParams?: any}= {}
-){
-    const list = ref<T[]>([]);//数据状态
-    const loading = ref(false);//加载状态
-    const searchParams = reactive({...(options.defaultParams || {})});
+// 定义一个基础分页接口
+interface BasePageParams {
+    page: number;
+    pageSize: number;
+}
+// 泛型 T 代表数据类型， P 代表请求参数类型
+export function useTable<T, P extends BasePageParams>(apiFunc: (params: P) => Promise<{ list: T[], total: number }>) {
+    const list = ref<T[]>([]) as any; // 规避TS推导报错
+    const loading = ref(false);
+    const total = ref(0); // 🚀 新增数据总条数
 
-    //核心加载方法
-    const loadData = async() =>{
-        if (loading.value) return ;
+    // 🚀 新增分页状态
+    const pagination = ref({
+        page: 1,
+        pageSize: 50 // B端系统默认每页数据可以大一点，配合我们的虚拟列表
+    });
+
+    // 🚀 加载数据时，将分页参数和外部传入的查询参数合并
+    const loadData = async (queryParams?: Partial<P>) => {
         loading.value = true;
         try {
-        //toRaw转换为响应式对象为普通对象传给后端，
-        const data = await apiFn(toRaw(searchParams));
-        list.value = data;    
+            const params = {
+                page: pagination.value.page,
+                pageSize: pagination.value.pageSize,
+                ...queryParams
+            }as P;
+
+            const res = await apiFunc(params);
+            list.value = res.list;
+            total.value = res.total; // 记录后端返回的总条数
         } catch (error) {
-            console.error('Table Load Error:',error);
-        }finally{
+            console.error('获取表格数据失败', error);
+        } finally {
             loading.value = false;
         }
     };
 
-    //带防抖的搜索
-    const handleSearch = debounce(() =>{
-        loadData();
-    },300);
-
-    //自动化初始化
-    onMounted(() =>{
-        if (options.immediate !== false) loadData();
-    });
-
-    return {
-        list,
-        loading,
-        searchParams,
-        loadData,
-        handleSearch
+    return { 
+        list, 
+        loading, 
+        total, 
+        pagination, 
+        loadData 
     };
 }

@@ -76,8 +76,6 @@ service.interceptors.request.use(
 );
 
 // 响应拦截器
-// src/utils/request.ts
-
 service.interceptors.response.use(
   (response: AxiosResponse<BaseResponse>) => {
     // 1. 直接解构，拿到核心业务码和数据

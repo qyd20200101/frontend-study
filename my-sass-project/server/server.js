@@ -8,13 +8,9 @@ app.use(cors());
 app.use(express.json());
 
 // 模拟数据库数据
-let projects = [
-    { id: 1, name: '西安高新区智慧路灯项目', budget: 1200000, status: 'active', category: 'IoT' },
-    { id: 2, name: '软新园区物业管理系统', budget: 450000, status: 'active', category: 'Software' },
-    { id: 3, name: '秦岭生态监测大屏', budget: 800000, status: 'archived', category: 'Visual' },
-    { id: 4, name: '城墙数字化巡检', budget: 300000, status: 'active', category: 'Software' }
-];
-
+let projects = [];
+const categories = ['IoT', 'Software', 'Visual', 'Security'];
+const statuses = ['active', 'archived','repair'];
 // 模拟组织架构数据（扁平结构）
 const departments = [
     { id: 1, pid: 0, name: '西安某集团总部' },
@@ -30,13 +26,47 @@ const departments = [
     { id: 11, pid: 4, name: '兰州办事处' },
     { id: 12, pid: 10, name: '高新区分队' }
 ];
-const categories = ['IoT', 'Software', 'Visual', 'Security'];
-
+const sysDictDataBase = {
+    //项目分类字典
+    'project_category': [
+        { label: '物联网(IoT)', value: 'IoT' },
+        { label: '软件研发(Software)', value: 'Software' },
+        { label: '数据大屏(Visual)', value: 'Visual' },
+        { label: '安全防护(Security)', value: 'Security' },
+    ],
+    //项目状态字典
+    'project_status': [
+        { label: '进行中', value: 'active' },
+        { label: '已归档', value: 'archived' }
+    ],
+    //用户角色字典
+    'sys_role_list': [
+        { label: '超级管理员', value: 'admin' },
+        { label: '普通编辑', value: 'editor' },
+        { label: '访客', value: 'viewer' },
+    ],
+    //用户状态字典
+    'sys_user_status': [
+        { label: '正常', value: 'active' },
+        { label: '禁用', value: 'disabled' }
+    ]
+};
+for (let i = 1; i < 120; i++) {
+    projects.push({
+        id: i,
+        name: i <= 4 ? ['西安高新区智慧路灯项目', '软新园区物业管理系统', '秦岭生态监测大屏', '城墙数字化巡检'][i-1] : `压测资产项目 —— 编号 ${i}`,
+        budget: Math.floor(Math.random() * 1000000) + 100000,
+        status: statuses[i % 3],
+        category: categories[i % 4],
+        deptId: (i % 5) + 1, // 模拟部门 1~5
+        history: [{ time: new Date().toLocaleString(), operator: 'System', action: '初始化' }]
+    });
+    
+}
 //优化ID生成器（）不在使用Date.now()
 const generateId = () => `u_${Math.random().toString(36).slice(2, 11)}`;
 const generateProjectId = () => `p_${Math.random().toString(36).slice(2, 11)}`;
 
-// server.js 
 // 1. 模拟数据库增加初始头像
 let systemUsers = [
     {
@@ -86,8 +116,6 @@ app.post('/api/login', (req, res) => {
         res.status(401).json({ code: 401, message: '用户名或密码错误' });
     }
 });
-
-
 
 //获取用户列表接口
 app.get('/api/users', (req, res) => {
@@ -222,7 +250,70 @@ app.get('/api/projects', (req, res) => {
         })
     }, 800);//模拟网络延迟
 });
+//项目分页查询
+app.get('/api/projects/page',(req,res) =>{
+    //获取分页和过滤参数
+    let page = parseInt(req.query.page) || 1;
+    let pageSize = parseInt(req.query.pageSize) || 50;
+    let {keyword,category,deptId} = req.query;
 
+    //内存查询过滤（模拟SQL的WHERE）
+    let filteredList = projects.filter(item =>{
+        let match = true;
+        //模糊匹配名称
+        if (keyword) {
+            match = match&& item.name.includes(keyword);
+        }
+        //精确匹配分类
+        if (category) {
+            match = match && item.category === category;
+        }
+        //精确匹配部门
+        if (deptId && deptId !== 'null' && deptId !=='undefined') {
+            match = match && String(item.deptId) === String(deptId);
+        }
+        return match;  
+    });
+
+    //计算总数
+    const total = filteredList.length;
+
+    //内存分页截取（模拟SQL的LIMIT&OFFSET）
+    const startIndex = (page -1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const pagedList = filteredList.slice(startIndex,endIndex);
+
+    //模拟网络延迟后返回标准格式
+    setTimeout(() =>{
+        res.json({
+            code:200,
+            data: {
+                list: pagedList,
+                total: total,
+            },
+            message: 'success'
+        });
+    },300); //300ms延迟
+});
+
+//资产批量删除
+app.delete('/api/projects/batch',(req,res) =>{
+    const {ids} = req.body;
+
+    if (!ids || !Array.isArray(ids)) {
+        return res.json({code:400,message:'参数错误，必须通过ID数组'});
+    }
+
+    //从内存数据库中过滤这些被删除的ID
+    const initialLength = projects.length;
+    projects = projects.filter(item => !ids.includes(item.id));
+
+    res.json({
+        code:200,
+        data: null,
+        message: `成功删除${initialLength - projects.length}条数据`
+    });
+});
 //新增/更新项目接口
 app.post('/api/projects/update', (req, res) => {
     try {
@@ -260,31 +351,7 @@ app.post('/api/projects/update', (req, res) => {
         return res.status(500).json({ code: 500, message: '服务器崩溃了' });
     }
 });
-const sysDictDataBase = {
-    //项目分类字典
-    'project_category': [
-        { label: '物联网(IoT)', value: 'IoT' },
-        { label: '软件研发(Software)', value: 'Software' },
-        { label: '数据大屏(Visual)', value: 'Visual' },
-        { label: '安全防护(Security)', value: 'Security' },
-    ],
-    //项目状态字典
-    'project_status': [
-        { label: '进行中', value: 'active' },
-        { label: '已归档', value: 'archived' }
-    ],
-    //用户角色字典
-    'sys_role_list': [
-        { label: '超级管理员', value: 'admin' },
-        { label: '普通编辑', value: 'editor' },
-        { label: '访客', value: 'viewer' },
-    ],
-    //用户状态字典
-    'sys_user_status': [
-        { label: '正常', value: 'active' },
-        { label: '禁用', value: 'disabled' }
-    ]
-};
+
 //通用字典查询接口
 app.get('/api/dict/:dictCode', (req, res) => {
     const { dictCode } = req.params;
