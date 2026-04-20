@@ -26,11 +26,12 @@ const props = defineProps < {
     modelValue: boolean;
     title?: string;
     width?: string;
+    isLocal?: boolean;//是否开启局部遮罩
 } > ();
 
 
 // 定义事件：子传父
-const emit = defineEmits(['update:modelValue', 'confirm', 'cancel']);
+const emit = defineEmits(['update:modelValue', 'confirm', 'cancel','isLocal']);
 
 //关闭方法
 const handleClose = () => {
@@ -46,7 +47,7 @@ const handleConfirm = () => {
 <template>
     <!-- 使用Vue内置的Transition增加高级感 -->
     <Transition name="fade">
-        <div v-if="modelValue" class="modal-mask" @click.self="handleClose">
+        <div v-if="modelValue" class="modal-mask" @click.self="handleClose" :class="{'is-local': isLocal}">
             <div class="modal-container" :style="{ width: width || '450px' }">
                 <!-- 头部 -->
                 <div class="modal-header">
@@ -79,6 +80,9 @@ const handleConfirm = () => {
     justify-content: center;
     align-items: center;
     z-index: 1000;
+}
+.modal-mask.is-local {
+    position: absolute;
 }
 .modal-container{
     padding: 20px;

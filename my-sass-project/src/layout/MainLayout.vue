@@ -1,11 +1,13 @@
 <!-- src/layout/MainLayout.vue -->
 <script setup lang="ts">
 import { useRouter, useRoute } from "vue-router";
+import TagsView from "../components/TagView.vue";
+import { useTagViewStore } from "../store/tagsView";
 import { useUserStore } from "../store/user";
 const router = useRouter();
 const route = useRoute(); // 引入 route 获取 meta 信息
 const userStore = useUserStore();
-
+const tagsViewStore = useTagViewStore();
 const handleCommand = (command: string) => {
     if (command === 'goProfile') {
         router.push('/profile');
@@ -62,21 +64,79 @@ const handleCommand = (command: string) => {
                     </el-dropdown>
                 </div>
             </el-header>
-            
+            <TagsView />
             <!-- 内容区 -->
             <el-main class="main-content">
-                <router-view></router-view>
+                <router-view v-slot="{ Component }">
+                    <transition name="fade-transform" mode="out-in">
+                        <keep-alive :include="tagsViewStore.cacheViews">
+                            <component :is="Component" :key="$route.fullPath" />
+                        </keep-alive>
+                    </transition>
+                </router-view>
             </el-main>
         </el-container>
     </el-container>
 </template>
 
 <style scoped>
-.layout-container { height: 100vh; }
-.aside { background-color: #304156; }
-.logo { height: 60px; line-height: 60px; text-align: center; color: #fff; font-weight: bold; font-size: 18px; }
-.header { border-bottom: 1px solid #e6e6e6; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff;}
-.user-info { display: flex; align-items: center; cursor: pointer; outline: none; }
-.username { margin: 0 8px; font-size: 14px; color: #666; }
-.main-content { background-color: #f0f2f5; padding: 20px; }
+.layout-container {
+    height: 100vh;
+}
+
+.aside {
+    background-color: #304156;
+}
+
+.logo {
+    height: 60px;
+    line-height: 60px;
+    text-align: center;
+    color: #fff;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.header {
+    border-bottom: 1px solid #e6e6e6;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background: #fff;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    outline: none;
+}
+
+.username {
+    margin: 0 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+.main-content {
+    background-color: #f0f2f5;
+    padding: 20px;
+}
+
+/* 增加一个极其丝滑的组件切换动画 */
+.fade-transform-leave-active,
+.fade-transform-enter-active {
+    transition: all 0.3s;
+}
+
+.fade-transform-enter-from {
+    opacity: 0;
+    transform: translateX(-30px);
+}
+
+.fade-transform-leave-to {
+    opacity: 0;
+    transform: translateX(30px);
+}
 </style>

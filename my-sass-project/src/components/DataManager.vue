@@ -1,6 +1,9 @@
+<script lang="ts">
+    export default {name: 'Dashboard'}
+</script>
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus"; 
 
 import type { Project, AssetStatus, AssetLog } from "../types/asset";
 import { useAssetBusiness } from "../hooks/useAssetBusiness";
@@ -200,7 +203,7 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
             </div>
         </aside>
 
-        <main class="dm-main">
+        <main class="dm-main" style="position: relative;">
             <section class="dm-chart-card">
                 <AssetChart title="资产分布统计" :data="chartSummaryData" @bar-click="(n: string) => selectedCategory = n" />
             </section>
@@ -283,9 +286,9 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
                 <div class="selection" v-if="selectedIds.size > 0">已选中 <b>{{ selectedIds.size }}</b> 项 <el-button link
                         type="danger" @click="selectedIds.clear()">取消</el-button></div>
             </footer>
-        </main>
+        
 
-        <BaseModal :model-value="!!editingItem" :title="editingItem?.id ? '资产详情' : '新增资产'"
+        <BaseModal :model-value="!!editingItem" is-local :title="editingItem?.id ? '资产详情' : '新增资产'"
             @confirm="submitForm(refreshtable)" @cancel="handleCancel" @update:model-value="closeForm">
             <el-form v-if="editingItem" label-width="80px">
                 <el-tabs type="border-card">
@@ -312,7 +315,7 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
         <!-- DataManager.vue 模板底部，在原本的详情弹窗旁边 -->
 
         <!-- 报修确认弹窗 -->
-        <BaseModal :model-value="isRepairDialogVisible" title="资产报修申请" width="450px"
+        <BaseModal :model-value="isRepairDialogVisible" is-local title="资产报修申请" width="450px"
             @update:model-value="isRepairDialogVisible = false" @confirm="confirmRepairAction">
             <div class="repair-form">
                 <el-alert title="您正在对该资产发起报修流程，请填写具体故障原因。" type="warning" :closable="false" show-icon
@@ -324,7 +327,7 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
                 </el-form>
             </div>
         </BaseModal>
-
+        </main>
     </div>
 </template>
 
@@ -345,6 +348,7 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
     flex: 1;
     display: flex;
     flex-direction: column;
+    position: relative;
     gap: 12px;
     min-width: 0;
     height: 100%;
@@ -386,8 +390,8 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    /* 🚀 核心：滚动交给虚拟列表 */
+    overflow-x: auto;
+    overflow-y: hidden;
     box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
     border: 1px solid #ebeef5;
 }
@@ -437,6 +441,7 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
 
 /* 7. 表头：同步 Padding */
 .v-table-header {
+    min-width: 950px;
     display: flex;
     align-items: center;
     height: 45px;
@@ -446,7 +451,6 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
     font-weight: bold;
     font-size: 13px;
     padding: 0 15px;
-    /* 🚀 必须与下方行 padding 严格一致 */
     box-sizing: border-box;
 }
 
@@ -456,8 +460,8 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
     align-items: center;
     width: 100%;
     height: 100%;
+    min-width: 950px;
     padding: 0 15px;
-    /* 🚀 必须与上方表头 padding 严格一致 */
     box-sizing: border-box;
     border-bottom: 1px solid #f2f6fc;
 }

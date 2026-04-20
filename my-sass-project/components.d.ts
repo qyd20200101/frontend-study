@@ -58,6 +58,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SmartSearch: typeof import('./src/components/SmartSearch.vue')['default']
+    TagView: typeof import('./src/components/TagView.vue')['default']
     TreeItem: typeof import('./src/components/TreeItem.vue')['default']
     UserInfoCard: typeof import('./src/components/UserInfoCard.vue')['default']
     VirtualTable: typeof import('./src/components/VirtualTable.vue')['default']

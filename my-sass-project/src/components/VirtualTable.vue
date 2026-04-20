@@ -29,13 +29,8 @@ const handleScroll = (e: Event) => {
   <div class="v-table-container" :style="{ height: viewHeight + 'px' }" @scroll="handleScroll">
     <div class="v-table-phantom" :style="{ height: phantomHeight + 'px' }"></div>
     <div class="v-table-content" :style="{ transform: `translateY(${offsetY}px)` }">
-      <div 
-        v-for="item in visibleData" 
-        :key="item.id" 
-        class="v-row-box"
-        :style="{ height: itemHeight + 'px' }"
-        @click="emit('row-click', item)"
-      >
+      <div v-for="item in visibleData" :key="item.id" class="v-row-box" :style="{ height: itemHeight + 'px' }"
+        @click="emit('row-click', item)">
         <slot :row="item"></slot>
       </div>
       <div v-if="data.length === 0" class="no-data">暂无匹配数据</div>
@@ -44,9 +39,36 @@ const handleScroll = (e: Event) => {
 </template>
 
 <style scoped>
-.v-table-container { overflow-y: auto; position: relative; background: #fff; }
-.v-table-phantom { position: absolute; left: 0; top: 0; right: 0; z-index: -1; }
-.v-table-content { position: absolute; left: 0; right: 0; top: 0; }
-.v-row-box { width: 100%; box-sizing: border-box; } /* 🚀 纯净容器 */
-.no-data { text-align: center; color: #909399; padding: 40px; }
+.v-table-container {
+  overflow-y: auto;
+  position: relative;
+  background: #fff;
+}
+
+.v-table-phantom {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  z-index: -1;
+}
+
+.v-table-content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+
+.v-row-box {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 🚀 纯净容器 */
+.no-data {
+  text-align: center;
+  color: #909399;
+  padding: 40px;
+}
 </style>
