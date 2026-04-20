@@ -6,7 +6,7 @@ import router from "./router"
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate"
 import { permission } from "./directive/permission"
-import * as ElementPlusIconsVue from "@element-plus/icons-vue"
+
 import 'element-plus/dist/index.css'
 
 // 1. 先创建实例
@@ -15,9 +15,7 @@ const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)
 
 // 2. 注册组件和指令
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-    app.component(key, component)
-}
+
 app.directive('permission', permission)
 
 // 3. 关键：先安装 Pinia

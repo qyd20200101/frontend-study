@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Download, Menu, Sort } from "@element-plus/icons-vue";
 
 import type { Project, AssetStatus, AssetLog } from "../types/asset";
 import { useAssetBusiness } from "../hooks/useAssetBusiness";
@@ -37,6 +36,10 @@ const {
 const selectedIds = ref(new Set<number>());
 const searchInput = ref("");
 
+//报修流程的特殊状态
+const isRepairDialogVisible = ref(false);
+const repairForm = ref({ reason: '', targetId: -1 });
+
 const transitionStatus = (row: Project, nextStatus: AssetStatus) => {
     const actionMap: Record<AssetStatus, string> = {
         active: '恢复运行', repair: '发起报修', archived: '执行归档', pending: '入库', scrapped: '报废'
@@ -58,7 +61,7 @@ const transitionStatus = (row: Project, nextStatus: AssetStatus) => {
         });
 };
 
-const debouncedSearch = debounce((val: string) => {
+const debouncedSearch = debounce(() => {
     // 假设 useAssetBusiness 处理了 searchQuery
 }, 300);
 
@@ -129,6 +132,31 @@ const updateTableHeight = () => {
     tableHeight.value = calculated > 300 ? calculated : 300;
 };
 
+const handleOpenRepair = (row: Project) => {
+    repairForm.value.targetId = row.id;
+    repairForm.value.reason = '';
+    isRepairDialogVisible.value = true;
+};
+
+const confirmRepairAction = () => {
+    if (!repairForm.value.reason.trim()) {
+        return ElMessage.warning('请输入报修原因');
+    }
+    const item = displayData.value.find(i => i.id === repairForm.value.targetId);
+    if (item) {
+        item.status = 'repair';
+        //调用审计方法
+        if (!item.history) item.history = [];
+        item.history.unshift({
+            time: new Date().toLocaleString(),
+            operator: 'Admin',
+            action: '发起报修',
+            remark: repairForm.value.reason
+        });
+        ElMessage.success(`资产[${item.name}]报修流程已开启`);
+    }
+    isRepairDialogVisible.value = false;
+}
 const handleCancel = () => {
     if (isDirty.value) ElMessageBox.confirm('内容已修改，确定放弃吗？', '提示').then(closeForm);
     else closeForm();
@@ -164,7 +192,9 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
 <template>
     <div class="dm-layout">
         <aside class="dm-sidebar">
-            <div class="sidebar-title"><el-icon><Menu /></el-icon> 组织架构</div>
+            <div class="sidebar-title"><el-icon>
+                    <i-ep-menu />
+                </el-icon> 组织架构</div>
             <div class="tree-container">
                 <TreeItem v-for="t in treeData" :key="t.id" :node="t" @node-click="(n: any) => selectedDeptId = n.id" />
             </div>
@@ -177,18 +207,24 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
 
             <section class="dm-toolbar">
                 <div class="bar-left">
-                    <el-input v-model="searchInput" placeholder="搜索资产名称..." prefix-icon="Search" clearable class="search-input" />
+                    <el-input v-model="searchInput" placeholder="搜索资产名称..." prefix-icon="Search" clearable
+                        class="search-input" />
                     <div class="filter-tags-area">
                         <transition-group name="el-fade-in">
-                            <el-tag v-if="selectedCategory" key="cat" closable @close="selectedCategory = ''" effect="light">分类: {{ selectedCategory }}</el-tag>
-                            <el-tag v-if="selectedDeptId" key="dept" type="success" closable @close="selectedDeptId = null" effect="light">部门: {{ selectedDeptId }}</el-tag>
-                            <el-button v-if="selectedCategory || selectedDeptId || searchInput" key="reset" link @click="resetFilters" type="primary">重置</el-button>
+                            <el-tag v-if="selectedCategory" key="cat" closable @close="selectedCategory = ''"
+                                effect="light">分类: {{ selectedCategory }}</el-tag>
+                            <el-tag v-if="selectedDeptId" key="dept" type="success" closable
+                                @close="selectedDeptId = null" effect="light">部门: {{ selectedDeptId }}</el-tag>
+                            <el-button v-if="selectedCategory || selectedDeptId || searchInput" key="reset" link
+                                @click="resetFilters" type="primary">重置</el-button>
                         </transition-group>
                     </div>
                 </div>
                 <div class="bar-right">
                     <el-button-group>
-                        <el-button type="success" @click="handleExport"><el-icon><Download /></el-icon> 导出</el-button>
+                        <el-button type="success" @click="handleExport"><el-icon>
+                                <i-ep-download />
+                            </el-icon> 导出</el-button>
                         <el-button type="primary" :loading="isGenerating" @click="generateMassiveData">压测5w</el-button>
                     </el-button-group>
                 </div>
@@ -202,18 +238,26 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
                             <el-checkbox :model-value="selectedIds.size === finalData.length && finalData.length > 0"
                                 @change="selectedIds = selectedIds.size > 0 ? new Set() : new Set(finalData.map(i => i.id))" />
                         </div>
-                        <div class="col-name clickable" @click="handleSort('name')">资产名称 <el-icon v-if="sortConfig.key === 'name'"><Sort /></el-icon></div>
+                        <div class="col-name clickable" @click="handleSort('name')">资产名称 <el-icon
+                                v-if="sortConfig.key === 'name'">
+                                <i-ep-sort />
+                            </el-icon></div>
                         <div class="col-cate">分类</div>
-                        <div class="col-budget clickable" @click="handleSort('budget')">预算金额 <el-icon v-if="sortConfig.key === 'budget'"><Sort /></el-icon></div>
+                        <div class="col-budget clickable" @click="handleSort('budget')">预算金额 <el-icon
+                                v-if="sortConfig.key === 'budget'">
+                                <i-ep-sort />
+                            </el-icon></div>
                         <div class="col-status">状态</div>
                         <div class="col-ops">操作</div>
                     </div>
                     <VirtualTable :data="finalData" :itemHeight="60" :viewHeight="tableHeight" @row-click="openForm">
                         <template #default="{ row }">
                             <div class="table-row" :class="{ 'is-selected': selectedIds.has(row.id) }">
-                                <div class="col-check"><el-checkbox :model-value="selectedIds.has(row.id)" @change="toggleSelection(row.id)" /></div>
+                                <div class="col-check"><el-checkbox :model-value="selectedIds.has(row.id)"
+                                        @change="toggleSelection(row.id)" /></div>
                                 <div class="col-name">{{ row.name }}</div>
-                                <div class="col-cate"><el-tag size="small" effect="plain">{{ row.category }}</el-tag></div>
+                                <div class="col-cate"><el-tag size="small" effect="plain">{{ row.category }}</el-tag>
+                                </div>
                                 <div class="col-budget">￥{{ row.budget.toLocaleString() }}</div>
                                 <div class="col-status">
                                     <span :style="{ color: '#67c23a' }" v-if="row.status === 'active'">● 进行中</span>
@@ -222,8 +266,10 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
                                 </div>
                                 <div class="col-ops">
                                     <el-button link type="primary" @click.stop="openForm(row)">详情</el-button>
-                                    <el-button v-if="row.status === 'active'" link type="warning" @click.stop="transitionStatus(row, 'repair')">报修</el-button>
-                                    <el-button v-if="row.status === 'repair'" link type="success" @click.stop="transitionStatus(row, 'active')">修复</el-button>
+                                    <el-button v-if="row.status === 'active'" link type="warning"
+                                        @click.stop="handleOpenRepair(row,)">报修</el-button>
+                                    <el-button v-if="row.status === 'repair'" link type="success"
+                                        @click.stop="transitionStatus(row, 'active')">修复</el-button>
                                 </div>
                             </div>
                         </template>
@@ -232,22 +278,29 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
             </section>
 
             <footer class="dm-footer">
-                <div class="summary">当前展示: <b>{{ summaryInfo.count }}</b> 项 | 总预算: <span class="price">￥{{ summaryInfo.totalBudget.toLocaleString() }}</span> | 平均: ￥{{ summaryInfo.average }}</div>
-                <div class="selection" v-if="selectedIds.size > 0">已选中 <b>{{ selectedIds.size }}</b> 项 <el-button link type="danger" @click="selectedIds.clear()">取消</el-button></div>
+                <div class="summary">当前展示: <b>{{ summaryInfo.count }}</b> 项 | 总预算: <span class="price">￥{{
+                    summaryInfo.totalBudget.toLocaleString() }}</span> | 平均: ￥{{ summaryInfo.average }}</div>
+                <div class="selection" v-if="selectedIds.size > 0">已选中 <b>{{ selectedIds.size }}</b> 项 <el-button link
+                        type="danger" @click="selectedIds.clear()">取消</el-button></div>
             </footer>
         </main>
 
-        <BaseModal :model-value="!!editingItem" :title="editingItem?.id ? '资产详情' : '新增资产'" @confirm="submitForm(refreshtable)" @cancel="handleCancel" @update:model-value="closeForm">
+        <BaseModal :model-value="!!editingItem" :title="editingItem?.id ? '资产详情' : '新增资产'"
+            @confirm="submitForm(refreshtable)" @cancel="handleCancel" @update:model-value="closeForm">
             <el-form v-if="editingItem" label-width="80px">
                 <el-tabs type="border-card">
                     <el-tab-pane label="基本信息">
                         <el-form-item label="名称"><el-input v-model="editingItem.name" /></el-form-item>
-                        <el-form-item label="预算"><el-input-number v-model="editingItem.budget" style="width:100%" /></el-form-item>
-                        <el-form-item label="分类"><ProSelect v-model="editingItem.category" dictCode="asset_type" /></el-form-item>
+                        <el-form-item label="预算"><el-input-number v-model="editingItem.budget"
+                                style="width:100%" /></el-form-item>
+                        <el-form-item label="分类">
+                            <ProSelect v-model="editingItem.category" dictCode="asset_type" />
+                        </el-form-item>
                     </el-tab-pane>
                     <el-tab-pane label="操作履历">
                         <el-timeline style="padding: 10px">
-                            <el-timeline-item v-for="(log, idx) in editingItem.history" :key="idx" :timestamp="log.time">
+                            <el-timeline-item v-for="(log, idx) in editingItem.history" :key="idx"
+                                :timestamp="log.time">
                                 {{ log.operator }} {{ log.action }}
                                 <p v-if="log.remark" style="color: #999; font-size: 12px">{{ log.remark }}</p>
                             </el-timeline-item>
@@ -256,6 +309,22 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
                 </el-tabs>
             </el-form>
         </BaseModal>
+        <!-- DataManager.vue 模板底部，在原本的详情弹窗旁边 -->
+
+        <!-- 报修确认弹窗 -->
+        <BaseModal :model-value="isRepairDialogVisible" title="资产报修申请" width="450px"
+            @update:model-value="isRepairDialogVisible = false" @confirm="confirmRepairAction">
+            <div class="repair-form">
+                <el-alert title="您正在对该资产发起报修流程，请填写具体故障原因。" type="warning" :closable="false" show-icon
+                    style="margin-bottom: 15px" />
+                <el-form label-width="80px">
+                    <el-form-item label="故障原因">
+                        <el-input v-model="repairForm.reason" type="textarea" :rows="3" placeholder="例如：设备无法开机、屏幕损坏等" />
+                    </el-form-item>
+                </el-form>
+            </div>
+        </BaseModal>
+
     </div>
 </template>
 
@@ -286,10 +355,12 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
     background: #fff;
     border-radius: 12px;
     padding: 10px;
-    height: 180px; 
-    flex-shrink: 0; /* 🚀 核心：禁止被压缩 */
-    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
-    overflow: hidden; /* 🚀 核心：防止图表遮挡下方 */
+    height: 180px;
+    flex-shrink: 0;
+    /* 🚀 核心：禁止被压缩 */
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    /* 🚀 核心：防止图表遮挡下方 */
     position: relative;
     z-index: 1;
 }
@@ -298,7 +369,8 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
 .dm-toolbar {
     background: #fff;
     padding: 0 20px;
-    height: 60px; /* 🚀 核心：锁定高度，不再变动 */
+    height: 60px;
+    /* 🚀 核心：锁定高度，不再变动 */
     border-radius: 12px;
     display: flex;
     justify-content: space-between;
@@ -314,18 +386,54 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* 🚀 核心：滚动交给虚拟列表 */
-    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+    overflow: hidden;
+    /* 🚀 核心：滚动交给虚拟列表 */
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
     border: 1px solid #ebeef5;
 }
 
 /* 6. 🚀 关键：锁定列宽（表头和行公用） */
-.col-check  { width: 45px;  flex-shrink: 0; display: flex; justify-content: center; }
-.col-name   { flex: 3;      min-width: 200px; padding: 0 10px; font-weight: 500; }
-.col-cate   { width: 100px; flex-shrink: 0; text-align: center; }
-.col-budget { width: 140px; flex-shrink: 0; text-align: right; padding-right: 20px; font-weight: bold; font-family: monospace; }
-.col-status { width: 120px; flex-shrink: 0; text-align: center; }
-.col-ops    { width: 160px; flex-shrink: 0; text-align: right; padding-right: 10px; }
+.col-check {
+    width: 45px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.col-name {
+    flex: 3;
+    min-width: 200px;
+    padding: 0 10px;
+    font-weight: 500;
+}
+
+.col-cate {
+    width: 100px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.col-budget {
+    width: 140px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 20px;
+    font-weight: bold;
+    font-family: monospace;
+}
+
+.col-status {
+    width: 120px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.col-ops {
+    width: 160px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 10px;
+}
 
 /* 7. 表头：同步 Padding */
 .v-table-header {
@@ -337,7 +445,8 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
     color: #909399;
     font-weight: bold;
     font-size: 13px;
-    padding: 0 15px; /* 🚀 必须与下方行 padding 严格一致 */
+    padding: 0 15px;
+    /* 🚀 必须与下方行 padding 严格一致 */
     box-sizing: border-box;
 }
 
@@ -347,23 +456,34 @@ onUnmounted(() => { window.removeEventListener('resize', updateTableHeight); });
     align-items: center;
     width: 100%;
     height: 100%;
-    padding: 0 15px; /* 🚀 必须与上方表头 padding 严格一致 */
+    padding: 0 15px;
+    /* 🚀 必须与上方表头 padding 严格一致 */
     box-sizing: border-box;
     border-bottom: 1px solid #f2f6fc;
 }
 
-/* 9. 页脚统计 */
-.dm-footer {
+/* DataManager.vue Style */
+
+.dm-table-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     background: #fff;
-    height: 45px;
-    padding: 0 20px;
+    border-radius: 12px 12px 0 0; /* 底部圆角去掉，因为要连接 Footer */
+    overflow: hidden;
+}
+
+.dm-footer {
+    height: 50px;
+    background: #fff;
     border-top: 1px solid #f0f2f5;
+    border-radius: 0 0 12px 12px; /* 圆角加在 Footer 底部 */
+    padding: 0 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 13px;
-    color: #606266;
-    flex-shrink: 0;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
 }
 
+  
 </style>

@@ -76,16 +76,63 @@ service.interceptors.request.use(
 );
 
 // 响应拦截器
+// src/utils/request.ts
+
 service.interceptors.response.use(
   (response: AxiosResponse<BaseResponse>) => {
-    // 直接获取后端定义的code和data
+    // 1. 直接解构，拿到核心业务码和数据
     const { code, data, message } = response.data;
 
-    //业务状态码处理（200代表成功）
+    // 2.【最高优先级】: 业务完全成功，直接返回数据
     if (code === 200) {
       return data;
     }
-       switch(code) {
+
+    // 3.【第二优先级】：处理 Token 过期 (业务码 401)，触发无感刷新
+    // 这里的 code 是后端自定义的，比如 { code: 401, msg: 'token invalid' }
+    if (code === 401) {
+      const config = response.config;
+      
+      // 如果不是正在刷新，由我来发起
+      if (!isRefreshing) {
+        isRefreshing = true;
+
+        return refreshTokenApi()
+          .then((res: any) => {
+            const userStore = useUserStore();
+            const newToken = res.data.token;
+            userStore.setToken(newToken);
+            
+            // 唤醒队列里的所有请求
+            requestQueue.forEach((cb) => cb(newToken));
+            requestQueue = [];
+
+            // 带着新 token 重新执行刚才失败的请求
+            config.headers!['Authorization'] = `Bearer ${newToken}`;
+            return service(config);
+          })
+          .catch(() => {
+            // 如果连 refreshToken 都过期了，就只能强制登出了
+            useUserStore().logout();
+            window.location.reload(); // 刷新页面，让路由守卫带回登录页
+            return Promise.reject(new Error('会话已过期，请重新登录'));
+          })
+          .finally(() => {
+            isRefreshing = false;
+          });
+      } else {
+        // 如果别人正在刷新，我进入队列排队
+        return new Promise((resolve) => {
+          requestQueue.push((newToken: string) => {
+            config.headers!['Authorization'] = `Bearer ${newToken}`;
+            resolve(service(config));
+          });
+        });
+      }
+    }
+
+    // 4.【第三优先级】：处理其他已知的业务错误（如业务锁定）
+    switch (code) {
         case 4003: 
             ElMessageBox.alert('该资产正在被其他管理员操作，请稍后刷新。', '业务锁定');
             break;
@@ -95,75 +142,39 @@ service.interceptors.response.use(
         default:
             ElMessage.error(message || '未知业务错误');
     }
-    //场景：处理特定错误码，如401登录过期
-    if (code === 401) {
-      const config = response.config;
 
-      //如果没有刷新，触发属性逻辑
-      if (!isRefreshing) {
-        isRefreshing = true;
-
-        //假设getUserStore()是获取oinia实例的方法
-        const userStore = useUserStore();
-
-        //发起刷新token的请求
-        return refreshTokenApi()
-          .then((res) => {
-            //保存新的token
-            const newToekn = res.data.token;
-            userStore.setToken(newToekn);
-
-            //带着新token将队列里的请求全部重新执行
-            requestQueue.forEach((cb) => cb(newToekn));
-            requestQueue = []; //清空队列
-
-            //重新发起当前报错的这一个请求
-            config.headers["Authorization"] = `Bearer ${newToekn}`;
-            return service(config);
-          })
-          .catch(() => {
-            //如果refreshToken也过期，只能强制登出
-            userStore.logout();
-            return Promise.reject(new Error('会话过期，请重新登陆'));
-          })
-          .finally(() => {
-            isRefreshing = false;
-          });
-      } else {
-        //如果正在刷新，将后续发来的请求挂起啊，存入队列
-        //利用Promise让请求在这里卡住，等待上面刷新成功后调用resolve释放
-        return new Promise((resolve) => {
-          requestQueue.push((newToken: string) => {
-            config.headers["Authorization"] = `Bearer ${newToken}`;
-            resolve(service(config));
-          });
-        });
-      }
-    }
-    //其他业务错误处理
+    // 5.【兜底】：抛出错误，中断 Promise 链
     return Promise.reject(new Error(message || "Error"));
   },
   (error: AxiosError) => {
-    // 处理HTTP状态码错误（500，404）
-    let message = "";
+    // 【HTTP Status 错误处理】
+    let message = '网络请求异常，请检查您的网络连接';
     if (error.response) {
-      switch (error.response.status) {
+      const { status } = error.response;
+      
+      switch (status) {
+        case 401: // HTTP 401 通常是登录接口密码错误，或 Token 格式错误
+          message = "用户名或密码错误";
+          break;
+        case 403:
+          message = "权限不足，服务器拒绝了您的请求";
+          break;
         case 404:
-          message = "请求资源不存在";
+          message = "请求的资源不存在";
           break;
         case 500:
-          message = "服务器内部错误";
+          message = "服务器内部错误，请联系管理员";
           break;
-
         default:
-          message = "网络请求异常";
-          break;
+          message = `HTTP错误: ${status}`;
       }
     }
-    console.error(message);
+    
+    ElMessage.error(message);
     return Promise.reject(error);
-  },
+  }
 );
+
 
 // 核心：封装通用的请求方法
 const request = <T = any>(config: AxiosRequestConfig): Promise<T> => {

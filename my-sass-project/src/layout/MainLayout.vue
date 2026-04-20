@@ -2,9 +2,6 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "../store/user";
-import { ArrowDown, Odometer, List } from "@element-plus/icons-vue";
-import { findPathNodes } from "../utils/route";
-import { computed } from "vue";
 const router = useRouter();
 const route = useRoute(); // 引入 route 获取 meta 信息
 const userStore = useUserStore();
@@ -18,18 +15,6 @@ const handleCommand = (command: string) => {
     }
 };
 
-//利用DFS动态计算当前路径的面包屑层级
-const breadrumbList = computed(() => {
-    const routesTree = userStore.menuRoutes || []; // 确保是数组
-    if (!route.path || routesTree.length === 0) return [];
-    
-    try {
-        return findPathNodes(routesTree, route.path) || [];
-    } catch (e) {
-        return [];
-    }
-});
-
 </script>
 
 <template>
@@ -40,12 +25,12 @@ const breadrumbList = computed(() => {
             <el-menu :default-active="route.path" router background-color="#304156" text-color="#bfcbd9"
                 active-text-color="#409EFF">
                 <el-menu-item index="/dashboard">
-                    <el-icon><Odometer /></el-icon>
+                    <el-icon><i-ep-odometer /></el-icon>
                     <span>控制台</span>
                 </el-menu-item>
                 <!-- 如果有系统管理路由，也加上 -->
                 <el-menu-item v-if="userStore.roles.includes('admin')" index="/system">
-                    <el-icon><List /></el-icon>
+                    <el-icon><i-ep-list /></el-icon>
                     <span>系统管理</span>
                 </el-menu-item>
             </el-menu>
@@ -66,7 +51,7 @@ const breadrumbList = computed(() => {
                             <!-- 加上可选链防止报错 -->
                             <el-avatar :size="32" :src="userStore.userInfo?.avatar" />
                             <span class="username">{{ userStore.userInfo?.username }}</span>
-                            <el-icon><ArrowDown /></el-icon>
+                            <el-icon><i-ep-arrowDown /></el-icon>
                         </span>
                         <template #dropdown>
                             <el-dropdown-menu>

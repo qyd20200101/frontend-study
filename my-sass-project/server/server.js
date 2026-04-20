@@ -61,25 +61,33 @@ let systemUsers = [
     }
 ];
 
-
-
-// 路由定义（匹配前端request.ts的逻辑）
-//完善登录逻辑：校验密码
+// 【✅ 正确的登录接口】
 app.post('/api/login', (req, res) => {
+    // 1. 从请求体中解构出用户名和密码
     const { username, password } = req.body;
+    
+    console.log(`[Auth] 收到登录请求: user=${username}, pass=${password}`);
+    
+    // 2. 在模拟数据库中查找匹配的用户（用户名和密码都得对）
     const user = systemUsers.find(u => u.username === username && u.password === password);
 
+    // 3. 根据查找结果返回不同响应
     if (user) {
+        // 如果找到了，返回 200 和一个模拟的 Token
+        console.log(`[Auth] ✅ 用户 ${username} 验证成功`);
         res.json({
             code: 200,
             data: { token: `token_${user.username}_${Date.now()}` },
-            message: '登陆成功'
+            message: '登录成功'
         });
     } else {
+        // 如果没找到，返回 401
+        console.log(`[Auth] ❌ 用户 ${username} 验证失败`);
         res.status(401).json({ code: 401, message: '用户名或密码错误' });
     }
-
 });
+
+
 
 //获取用户列表接口
 app.get('/api/users', (req, res) => {
@@ -92,7 +100,7 @@ app.get('/api/users', (req, res) => {
 // 新增用户接口:增加校验功能
 app.post('/api/users', (req, res) => {
     try {
-        const { username } = req.body;
+        const { username,password,role,roles } = req.body;
 
         // 字段规范校验
         if (!username || username.length < 3) {
@@ -131,37 +139,38 @@ app.post('/api/users', (req, res) => {
 });
 
 
-//获取用户信息（包含角色）
 app.get('/api/user/info', (req, res) => {
     const authHeader = req.headers.authorization;
+    console.log('--- 收到 /api/user/info 请求 ---');
+    console.log('[Step 1] 收到的 Authorization Header:', authHeader);
+
     let currentUser;
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        // 提取 Bearer 后面的实际 Token 字符串
+   if (authHeader && authHeader.startsWith('Bearer ')) {
         const tokenValue = authHeader.replace('Bearer ', '');
-
-        // 假设 token 格式是 token_admin_123456
-        // 我们通过 _ 分割，拿到第二段的 username ('admin')
         const tokenParts = tokenValue.split('_');
-        if (tokenParts.length >= 2) {
-            const reqUsername = tokenParts[1];
-            // 去数据库里找这个 username
+        // 【核心修正】：不再只取第二段，而是把中间的所有段拼接起来
+        if (tokenParts.length >= 3) { // 至少包含 "token"、用户名、时间戳
+            // 提取从第二个元素到倒数第二个元素的所有部分
+            // 例如: 'editor_zhang' -> 提取 'editor', 'zhang' -> 拼接成 'editor_zhang'
+            const usernameParts = tokenParts.slice(1, -1);
+            const reqUsername = usernameParts.join('_');
+            
+            console.log('[Step 4] 从 Token 中解析出的用户名:', reqUsername);
+            
             currentUser = systemUsers.find(u => u.username === reqUsername);
+            console.log('[Step 5] 在数据库中查找结果:', currentUser ? `找到用户 ${currentUser.username}` : '❌ 未找到用户');
         }
     }
 
     if (currentUser) {
-        res.json({
-            code: 200,
-            data: {
-                ...currentUser,
-                roles: currentUser.roles || ['viewer']
-            },
-        });
+        console.log('[结果] ✅ 验证成功，返回用户信息');
+        res.json({ code: 200, data: { ...currentUser, roles: currentUser.roles || ['viewer'] } });
     } else {
-        // 如果找不到人，说明 Token 无效，返回 401 让前端跳回登录页
+        console.log('[结果] ❌ 验证失败，返回 401');
         res.status(401).json({ code: 401, message: 'Token失效，请重新登录' });
     }
+    console.log('--- /api/user/info 请求处理完毕 ---\n');
 });
 
 //修改用户权限/信息
@@ -200,6 +209,7 @@ app.delete('/api/users/:id', (req, res) => {
 app.post('/api/user/upload', (req, res) => {
     const randomSeed = Math.random().toString(36).substring(7);
     const newAvatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}`;
+    res.json({})
 });
 
 //获取项目列表
@@ -298,7 +308,7 @@ app.get('/api/dict/batch', (req, res) => {
     if (!codes) {
         return res.json({ code: 200, data: {} })
     }
-    const codeList = code.split(',');
+    const codeList = codes.split(',');
     const result = {};
 
     codeList.forEach(code => {
