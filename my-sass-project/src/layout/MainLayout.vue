@@ -35,6 +35,10 @@ const handleCommand = (command: string) => {
                     <el-icon><i-ep-list /></el-icon>
                     <span>系统管理</span>
                 </el-menu-item>
+                <el-menu-item index="/form-builder">
+                    <el-icon><i-ep-edit/></el-icon>
+                    <span>低代码表单</span>
+                </el-menu-item>
             </el-menu>
         </el-aside>
 
