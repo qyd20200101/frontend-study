@@ -1,3 +1,4 @@
+import { KeepAlive } from "vue";
 import {
   createRouter,
   createWebHistory,
@@ -46,6 +47,17 @@ export const asyncRoutes: RouteRecordRaw[] = [
         name: "Dashboard",
         component: () => import("../components/DataManager.vue"),
         meta: { title: "资产管理面板", roles: ["admin", "editor"] },
+      },
+      {
+        path: "form-builder",
+        name: "FormBuilder",
+        component: () => import("../views/lowcode/FormBuilder.vue"),
+        meta:{
+          title: "低代码表单",
+          icon: "Edit",
+          roles: ['admin','editor'],
+          KeepAlive:true
+        },
       },
       {
         path: "system",
