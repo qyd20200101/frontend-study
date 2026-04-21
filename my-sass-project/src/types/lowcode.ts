@@ -2,7 +2,7 @@
 export type ComponentType = 'input'| 'select'| 'radio'| 'checkbox'| 'switch'|'date';
 
 //单个组件的通用数据结构
-export interface FormComponet{
+export interface FormComponent{
     id:string;
     type: ComponentType;
     label: string;
@@ -16,5 +16,5 @@ export interface FormSchema {
     formId: string;
     title: string;
     labelWidth: string;
-    components: FormComponet[];
+    components: FormComponent[];
 }
