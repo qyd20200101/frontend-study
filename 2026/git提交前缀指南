@@ -1,0 +1,13 @@
+feat: ✨ 新增功能/代码 (Feature)
+
+fix: 🐛 修复 Bug
+
+docs: 📝 仅修改文档/注释/计划表 (Documentation)
+
+style: 💄 代码格式调整 (不影响逻辑，如删掉多余空格)
+
+refactor: ♻️ 代码重构 (既不是新增功能，也不是修 Bug)
+
+test: ✅ 增加或修改测试用例
+
+chore: 🔧 构建过程或辅助工具变动 (如改 webpack 配置、装 npm 包)
