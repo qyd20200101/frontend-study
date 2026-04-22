@@ -10,7 +10,7 @@ app.use(express.json());
 // 模拟数据库数据
 let projects = [];
 const categories = ['IoT', 'Software', 'Visual', 'Security'];
-const statuses = ['active', 'archived','repair'];
+const statuses = ['active', 'archived', 'repair'];
 // 模拟组织架构数据（扁平结构）
 const departments = [
     { id: 1, pid: 0, name: '西安某集团总部' },
@@ -54,22 +54,21 @@ const sysDictDataBase = {
 for (let i = 1; i < 120; i++) {
     projects.push({
         id: i,
-        name: i <= 4 ? ['西安高新区智慧路灯项目', '软新园区物业管理系统', '秦岭生态监测大屏', '城墙数字化巡检'][i-1] : `压测资产项目 —— 编号 ${i}`,
+        name: i <= 4 ? ['西安高新区智慧路灯项目', '软新园区物业管理系统', '秦岭生态监测大屏', '城墙数字化巡检'][i - 1] : `压测资产项目 —— 编号 ${i}`,
         budget: Math.floor(Math.random() * 1000000) + 100000,
         status: statuses[i % 3],
         category: categories[i % 4],
         deptId: (i % 5) + 1, // 模拟部门 1~5
         history: [{ time: new Date().toLocaleString(), operator: 'System', action: '初始化' }]
     });
-    
+
 }
 //优化ID生成器（）不在使用Date.now()
 const generateId = () => `u_${Math.random().toString(36).slice(2, 11)}`;
 const generateProjectId = () => `p_${Math.random().toString(36).slice(2, 11)}`;
 
 // 1. 模拟数据库增加初始头像
-let systemUsers = [
-    {
+let systemUsers = [{
         id: generateId(),
         username: 'admin',
         password: '123456',
@@ -95,9 +94,9 @@ let systemUsers = [
 app.post('/api/login', (req, res) => {
     // 1. 从请求体中解构出用户名和密码
     const { username, password } = req.body;
-    
+
     console.log(`[Auth] 收到登录请求: user=${username}, pass=${password}`);
-    
+
     // 2. 在模拟数据库中查找匹配的用户（用户名和密码都得对）
     const user = systemUsers.find(u => u.username === username && u.password === password);
 
@@ -128,7 +127,7 @@ app.get('/api/users', (req, res) => {
 // 新增用户接口:增加校验功能
 app.post('/api/users', (req, res) => {
     try {
-        const { username,password,role,roles } = req.body;
+        const { username, password, role, roles } = req.body;
 
         // 字段规范校验
         if (!username || username.length < 3) {
@@ -174,7 +173,7 @@ app.get('/api/user/info', (req, res) => {
 
     let currentUser;
 
-   if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
         const tokenValue = authHeader.replace('Bearer ', '');
         const tokenParts = tokenValue.split('_');
         // 【核心修正】：不再只取第二段，而是把中间的所有段拼接起来
@@ -183,9 +182,9 @@ app.get('/api/user/info', (req, res) => {
             // 例如: 'editor_zhang' -> 提取 'editor', 'zhang' -> 拼接成 'editor_zhang'
             const usernameParts = tokenParts.slice(1, -1);
             const reqUsername = usernameParts.join('_');
-            
+
             console.log('[Step 4] 从 Token 中解析出的用户名:', reqUsername);
-            
+
             currentUser = systemUsers.find(u => u.username === reqUsername);
             console.log('[Step 5] 在数据库中查找结果:', currentUser ? `找到用户 ${currentUser.username}` : '❌ 未找到用户');
         }
@@ -193,7 +192,7 @@ app.get('/api/user/info', (req, res) => {
 
     if (currentUser) {
         console.log('[结果] ✅ 验证成功，返回用户信息');
-        res.json({ code: 200, data: { ...currentUser, roles: currentUser.roles || ['viewer'] } });
+        res.json({ code: 200, data: {...currentUser, roles: currentUser.roles || ['viewer'] } });
     } else {
         console.log('[结果] ❌ 验证失败，返回 401');
         res.status(401).json({ code: 401, message: 'Token失效，请重新登录' });
@@ -206,7 +205,7 @@ app.post('/api/user/update', (req, res) => {
     const { id, role, username } = req.body;
     const index = systemUsers.findIndex(u => u.id === id);
     if (index !== -1) {
-        systemUsers[index] = { ...systemUsers[index], role, username };
+        systemUsers[index] = {...systemUsers[index], role, username };
         res.json({ code: 200, data: true, message: '更新成功' });
     } else {
         res.status(404).json({ code: 404, message: '用户不存在' });
@@ -228,7 +227,8 @@ app.delete('/api/users/:id', (req, res) => {
         })
     } else {
         res.status(404).json({
-            code: 404, message: '未找到该用户'
+            code: 404,
+            message: '未找到该用户'
         })
     }
 });
@@ -248,60 +248,60 @@ app.get('/api/projects', (req, res) => {
             data: projects,
             message: 'success'
         })
-    }, 800);//模拟网络延迟
+    }, 800); //模拟网络延迟
 });
 //项目分页查询
-app.get('/api/projects/page',(req,res) =>{
+app.get('/api/projects/page', (req, res) => {
     //获取分页和过滤参数
     let page = parseInt(req.query.page) || 1;
     let pageSize = parseInt(req.query.pageSize) || 50;
-    let {keyword,category,deptId} = req.query;
+    let { keyword, category, deptId } = req.query;
 
     //内存查询过滤（模拟SQL的WHERE）
-    let filteredList = projects.filter(item =>{
+    let filteredList = projects.filter(item => {
         let match = true;
         //模糊匹配名称
         if (keyword) {
-            match = match&& item.name.includes(keyword);
+            match = match && item.name.includes(keyword);
         }
         //精确匹配分类
         if (category) {
             match = match && item.category === category;
         }
         //精确匹配部门
-        if (deptId && deptId !== 'null' && deptId !=='undefined') {
+        if (deptId && deptId !== 'null' && deptId !== 'undefined') {
             match = match && String(item.deptId) === String(deptId);
         }
-        return match;  
+        return match;
     });
 
     //计算总数
     const total = filteredList.length;
 
     //内存分页截取（模拟SQL的LIMIT&OFFSET）
-    const startIndex = (page -1) * pageSize;
+    const startIndex = (page - 1) * pageSize;
     const endIndex = startIndex + pageSize;
-    const pagedList = filteredList.slice(startIndex,endIndex);
+    const pagedList = filteredList.slice(startIndex, endIndex);
 
     //模拟网络延迟后返回标准格式
-    setTimeout(() =>{
+    setTimeout(() => {
         res.json({
-            code:200,
+            code: 200,
             data: {
                 list: pagedList,
                 total: total,
             },
             message: 'success'
         });
-    },300); //300ms延迟
+    }, 300); //300ms延迟
 });
 
 //资产批量删除
-app.delete('/api/projects/batch',(req,res) =>{
-    const {ids} = req.body;
+app.delete('/api/projects/batch', (req, res) => {
+    const { ids } = req.body;
 
     if (!ids || !Array.isArray(ids)) {
-        return res.json({code:400,message:'参数错误，必须通过ID数组'});
+        return res.json({ code: 400, message: '参数错误，必须通过ID数组' });
     }
 
     //从内存数据库中过滤这些被删除的ID
@@ -309,7 +309,7 @@ app.delete('/api/projects/batch',(req,res) =>{
     projects = projects.filter(item => !ids.includes(item.id));
 
     res.json({
-        code:200,
+        code: 200,
         data: null,
         message: `成功删除${initialLength - projects.length}条数据`
     });
@@ -324,21 +324,21 @@ app.post('/api/projects/update', (req, res) => {
         if (id) {
             const index = projects.findIndex(p => String(p.id) === String(id));
             if (index !== -1) {
-                projects[index] = { ...projects[index], ...updateData };
+                projects[index] = {...projects[index], ...updateData };
                 // 必须要有 return！
                 return res.json({ code: 200, data: projects[index], message: '更新成功' });
             } else {
                 return res.status(404).json({ code: 404, message: '未找到项目' });
             }
-        } 
-        
+        }
+
         // 如果没传 ID，说明是【新增】
         const newProject = {
-            id: generateProjectId(), 
+            id: generateProjectId(),
             ...updateData
         };
         projects.unshift(newProject); // 加到最前面
-        
+
         // 必须要有 return！
         return res.json({
             code: 200,
@@ -411,6 +411,40 @@ app.get('/api/departments', (req, res) => {
         data: departments,
         message: 'success'
     });
+});
+
+
+//低代码表单引擎后端接口
+let formDatabase = null;
+
+//保存/发布表单协议
+app.post('/api/forms/save', (req, res) => {
+    const schema = req.body;
+    if (!schema || !schema.formId) {
+        return res.status(400).json({ code: 400, mesage: '非法的Schema数据' })
+    }
+
+    formDatabase = schema; //存入模拟数据库
+
+    //模拟网络延迟
+    setTimeout(() => {
+        res.json({
+            code: 200,
+            message: '表单发布成功',
+            data: formDatabase.formId
+        });
+    }, 500);
+});
+
+//获取最新保存的表单协议（用于刷新回显）
+app.get('/api/forms/latest', (req, res) => {
+    setTimeout(() => {
+        res.json({
+            code: 200,
+            message: 'success',
+            data: formDatabase //如果没有保存过，这里就是null
+        });
+    }, 300);
 });
 
 app.listen(port, () => {

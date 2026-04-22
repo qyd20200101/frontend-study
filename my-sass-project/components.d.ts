@@ -58,6 +58,7 @@ declare module 'vue' {
     IEpList: typeof import('~icons/ep/list')['default']
     IEpMenu: typeof import('~icons/ep/menu')['default']
     IEpOdometer: typeof import('~icons/ep/odometer')['default']
+    IEpRank: typeof import('~icons/ep/rank')['default']
     IEpSort: typeof import('~icons/ep/sort')['default']
     OrderDashboard: typeof import('./src/components/OrderDashboard.vue')['default']
     ProSelect: typeof import('./src/components/ProSelect.vue')['default']

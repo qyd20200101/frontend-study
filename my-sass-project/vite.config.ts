@@ -81,6 +81,7 @@ export default defineConfig({
     },
   },
   server: {
+    open: true, // 自动打开默认浏览器
     proxy: {
       // 只要请求路径以/api开通，就转发到3000端口
       "/api": {
