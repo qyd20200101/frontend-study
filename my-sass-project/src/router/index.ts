@@ -53,9 +53,20 @@ export const asyncRoutes: RouteRecordRaw[] = [
         name: "FormBuilder",
         component: () => import("../views/lowcode/FormBuilder.vue"),
         meta:{
-          title: "低代码表单",
+          title: "低代码表单构建器",
           icon: "Edit",
           roles: ['admin','editor'],
+          KeepAlive:true
+        },
+      },
+      {
+        path: "form-consumer",
+        name: "FormConsumer",
+        component: () => import("../views/lowcode/FormConsumer.vue"),
+        meta:{
+          title: "表单消费端",
+          icon: "Document",
+          roles: ['admin','editor','user'],
           KeepAlive:true
         },
       },

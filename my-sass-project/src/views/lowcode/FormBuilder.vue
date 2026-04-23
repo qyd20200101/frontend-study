@@ -9,6 +9,8 @@ import { ElMessage } from 'element-plus';
 import type { FormComponent, FormSchema } from '../../types/lowcode';
 //引入接口
 import { saveFormSchemeApi, getFormSchemaApi } from "../../api/form";
+import { getElComponent, getTriggerType } from "../../utils/lowcode";
+import ComponentConfig from '../../components/ComponentConfig.vue';
 // --- 状态管理 ---
 const schema = ref<FormSchema>({
     formId: `form_${Date.now()}`,
@@ -20,6 +22,8 @@ const schema = ref<FormSchema>({
 const materialList = ref([
     { type: 'input', label: '单行文本', icon: 'Edit' },
     { type: 'select', label: '下拉选择', icon: 'Filter' },
+    { type: 'radio', label: '单选框', icon: 'CheckBox' },
+    { type: 'checkbox', label: '复选框', icon: 'DocumentCopy' },
     { type: 'switch', label: '开关', icon: 'SwitchButton' },
     { type: 'date', label: '日期选择', icon: 'Calendar' }
 ]);
@@ -109,27 +113,18 @@ const deleteComponent = (id: string) => {
     if (activeComponentId.value === id) activeComponentId.value = null;
 };
 
-const getElComponent = (type: string) => {
-    const map: Record<string, string> = {
-        'input': 'el-input',
-        'select': 'el-select',
-        'switch': 'el-switch',
-        'date': 'el-date-picker'
-    };
-    return map[type] || 'el-input';
-};
-
 // --- 出码逻辑 ---
 const generateCode = () => {
     if (!schema.value.components.length) return ElMessage.warning('画布为空');
     generatedJsonCode.value = JSON.stringify(schema.value, null, 2);
 
-    // 生成简单的 Vue 模板
-    let tpl = `<template>\n  <el-form label-width="${schema.value.labelWidth}">\n`;
+    // 生成 Vue 模板
+    let tpl = `<template>\n  <el-form :model="form" :rules="rules" label-width="100px">\n`;
     schema.value.components.forEach(c => {
         tpl += `    <el-form-item label="${c.label}" prop="${c.field}">\n      <${getElComponent(c.type)} v-model="form.${c.field}" />\n    </el-form-item>\n`;
     });
     tpl += `  </el-form>\n</template>`;
+
     // 组装 Script 
     let script = `<script setup>\nimport { ref } from 'vue';\n\nconst formRef = ref(null);\nconst form = ref({\n`;
     let rulesStr = `const rules = ref({\n`;
@@ -138,11 +133,14 @@ const generateCode = () => {
         script += `  ${c.field}: ${c.type === 'switch' ? 'false' : 'null'},\n`;
         // 如果右侧配置了必填，自动生成 Element Plus 校验规则代码！
         if (c.required) {
-            const trigger = ['input'].includes(c.type) ? 'blur' : 'change';
+            const trigger = getTriggerType(c.type);
             rulesStr += `  ${c.field}: [{ required: true, message: '此项为必填项', trigger: '${trigger}' }],\n`;
         }
     });
-    generatedVueCode.value = tpl;
+    rulesStr += `});\n`;
+    script += `});\n\n${rulesStr}`;
+
+    generatedVueCode.value = tpl + '\n\n' + script;
     isPreviewVisible.value = true;
 };
 
@@ -239,29 +237,19 @@ onMounted(async () => {
             <aside class="lc-sidebar right">
                 <el-tabs type="border-card" class="config-tabs">
                     <el-tab-pane label="组件属性">
-                        <div v-if="activeComponent" class="attr-panel">
-                            <el-form label-position="top">
-                                <el-form-item label="组件字段 (Field)">
-                                    <el-input v-model="activeComponent.field" placeholder="例如: username" />
-                                </el-form-item>
-                                <el-form-item label="标题文字 (Label)">
-                                    <el-input v-model="activeComponent.label" />
-                                </el-form-item>
-                                <el-form-item label="是否必填">
-                                    <el-switch v-model="activeComponent.required" />
-                                </el-form-item>
-                                <el-form-item label="占位提示" v-if="activeComponent.props.placeholder !== undefined">
-                                    <el-input v-model="activeComponent.props.placeholder" />
-                                </el-form-item>
-                            </el-form>
-                        </div>
-                        <el-empty v-else description="请先在画布中选中组件" :image-size="80" />
+                        <component-config :component="activeComponent" />
                     </el-tab-pane>
                     <el-tab-pane label="全局配置">
                         <div class="attr-panel">
                             <el-form label-position="top">
+                                <el-form-item label="表单标题">
+                                    <el-input v-model="schema.title" />
+                                </el-form-item>
                                 <el-form-item label="标签宽度">
                                     <el-input v-model="schema.labelWidth" />
+                                </el-form-item>
+                                <el-form-item label="表单 ID">
+                                    <el-input v-model="schema.formId" disabled />
                                 </el-form-item>
                             </el-form>
                         </div>
