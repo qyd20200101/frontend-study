@@ -9,7 +9,8 @@ import { ElMessage } from 'element-plus';
 import type { FormComponent, FormSchema } from '../../types/lowcode';
 //引入接口
 import { saveFormSchemeApi, getFormSchemaApi } from "../../api/form";
-import { getElComponent, getTriggerType } from "../../utils/lowcode";
+import { getElComponent, getTriggerType, formatComponentProps, generateOptionsTemplate } from "../../utils/lowcode";
+import { generateValidationRulesCode } from "../../utils/validation";
 import ComponentConfig from '../../components/ComponentConfig.vue';
 // --- 状态管理 ---
 const schema = ref<FormSchema>({
@@ -21,11 +22,14 @@ const schema = ref<FormSchema>({
 
 const materialList = ref([
     { type: 'input', label: '单行文本', icon: 'Edit' },
+    { type: 'textarea', label: '多行文本', icon: 'Document' },
+    { type: 'number', label: '数字输入', icon: 'Plus' },
     { type: 'select', label: '下拉选择', icon: 'Filter' },
     { type: 'radio', label: '单选框', icon: 'CheckBox' },
     { type: 'checkbox', label: '复选框', icon: 'DocumentCopy' },
     { type: 'switch', label: '开关', icon: 'SwitchButton' },
-    { type: 'date', label: '日期选择', icon: 'Calendar' }
+    { type: 'date', label: '日期选择', icon: 'Calendar' },
+    { type: 'time', label: '时间选择', icon: 'Timer' }
 ]);
 
 const activeComponentId = ref<string | null>(null);
@@ -118,29 +122,94 @@ const generateCode = () => {
     if (!schema.value.components.length) return ElMessage.warning('画布为空');
     generatedJsonCode.value = JSON.stringify(schema.value, null, 2);
 
-    // 生成 Vue 模板
-    let tpl = `<template>\n  <el-form :model="form" :rules="rules" label-width="100px">\n`;
+    // 生成 Vue 模板 - 改进版本
+    let tpl = `<template>
+  <div class="form-wrapper">
+    <el-form 
+      ref="formRef" 
+      :model="formData" 
+      :rules="formRules" 
+      label-width="${schema.value.labelWidth || '100px'}" 
+      label-position="top"
+    >
+`;
+    
     schema.value.components.forEach(c => {
-        tpl += `    <el-form-item label="${c.label}" prop="${c.field}">\n      <${getElComponent(c.type)} v-model="form.${c.field}" />\n    </el-form-item>\n`;
+        const elComponent = getElComponent(c.type);
+        const props = formatComponentProps(c);
+        const optionsTemplate = generateOptionsTemplate(c);
+        
+        tpl += `      <el-form-item label="${c.label}" prop="${c.field}"${c.required ? ' required' : ''}>
+        <${elComponent}
+          v-model="formData.${c.field}"
+          ${props}
+          style="width: 100%"
+        ${optionsTemplate ? `>${optionsTemplate}
+        </${elComponent}>` : '/>'}
+      </el-form-item>
+`;
     });
-    tpl += `  </el-form>\n</template>`;
+    
+    tpl += `      <el-form-item>
+        <el-button type="primary" @click="handleSubmit" :loading="submitting">提交</el-button>
+        <el-button @click="handleReset">重置</el-button>
+      </el-form-item>
+    </el-form>
+  </div>
+</template>
+`;
 
-    // 组装 Script 
-    let script = `<script setup>\nimport { ref } from 'vue';\n\nconst formRef = ref(null);\nconst form = ref({\n`;
-    let rulesStr = `const rules = ref({\n`;
+    // 组装 Script - 改进版本
+    let script = `<script setup>
+import { ref } from 'vue';
+import { ElMessage } from 'element-plus';
 
+const formRef = ref(null);
+const submitting = ref(false);
+const formData = ref({
+`;
+    
     schema.value.components.forEach(c => {
-        script += `  ${c.field}: ${c.type === 'switch' ? 'false' : 'null'},\n`;
-        // 如果右侧配置了必填，自动生成 Element Plus 校验规则代码！
-        if (c.required) {
-            const trigger = getTriggerType(c.type);
-            rulesStr += `  ${c.field}: [{ required: true, message: '此项为必填项', trigger: '${trigger}' }],\n`;
-        }
+        const defaultValue = c.type === 'switch' ? 'false' :
+            ['checkbox', 'select', 'radio'].includes(c.type) ? '[]' : 
+            c.type === 'number' ? '0' :
+            'null';
+        script += `  ${c.field}: ${defaultValue},\n`;
     });
-    rulesStr += `});\n`;
-    script += `});\n\n${rulesStr}`;
+    
+    script += `});
 
-    generatedVueCode.value = tpl + '\n\n' + script;
+${generateValidationRulesCode(schema.value.components)}
+
+const handleSubmit = async () => {
+  if (!formRef.value) return;
+  try {
+    submitting.value = true;
+    await formRef.value.validate();
+    // 在这里调用提交 API
+    console.log('表单数据:', formData.value);
+    ElMessage.success('提交成功');
+  } catch (error) {
+    ElMessage.warning('请检查表单填写');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+const handleReset = () => {
+  formRef.value?.resetFields();
+};
+<\/script>
+
+<style scoped>
+.form-wrapper {
+  padding: 20px;
+  background: #fff;
+  border-radius: 4px;
+}
+</style>`;
+
+    generatedVueCode.value = tpl + '\n' + script;
     isPreviewVisible.value = true;
 };
 

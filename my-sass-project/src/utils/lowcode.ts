@@ -1,6 +1,8 @@
 /**
- * 低代码平台公共工具函数
+ * 低代码平台公共工具函数 - 核心功能
  */
+
+import { generateElValidationRules, getTriggerByType } from './validation';
 
 /**
  * 获取组件类型对应的 Element Plus 组件名称
@@ -8,9 +10,12 @@
 export const getElComponent = (type: string): string => {
     const map: Record<string, string> = {
         'input': 'el-input',
+        'textarea': 'el-input',
+        'number': 'el-input-number',
         'select': 'el-select',
         'switch': 'el-switch',
         'date': 'el-date-picker',
+        'time': 'el-time-picker',
         'radio': 'el-radio-group',
         'checkbox': 'el-checkbox-group',
     };
@@ -28,6 +33,11 @@ export const getDefaultValue = (type: string): any => {
         case 'select':
         case 'radio':
             return [];
+        case 'number':
+            return 0;
+        case 'date':
+        case 'time':
+            return null;
         default:
             return null;
     }
@@ -37,28 +47,14 @@ export const getDefaultValue = (type: string): any => {
  * 验证规则触发方式映射
  */
 export const getTriggerType = (type: string): string => {
-    return ['input'].includes(type) ? 'blur' : 'change';
+    return ['input', 'textarea', 'number'].includes(type) ? 'blur' : 'change';
 };
 
 /**
- * 生成表单验证规则
+ * 生成表单验证规则 - 完整版本，支持多种规则类型
  */
 export const generateValidationRules = (components: any[]): Record<string, any> => {
-    const rules: Record<string, any> = {};
-    
-    components.forEach(comp => {
-        if (comp.required) {
-            rules[comp.field] = [
-                {
-                    required: true,
-                    message: `${comp.label}为必填项`,
-                    trigger: getTriggerType(comp.type)
-                }
-            ];
-        }
-    });
-    
-    return rules;
+    return generateElValidationRules(components);
 };
 
 /**
@@ -72,4 +68,95 @@ export const initFormData = (components: any[]): Record<string, any> => {
     });
     
     return formData;
+};
+
+/**
+ * 获取组件的输入类型（用于input type属性）
+ */
+export const getInputType = (type: string): string => {
+    const typeMap: Record<string, string> = {
+        'input': 'text',
+        'number': 'number',
+        'textarea': 'textarea',
+        'email': 'email',
+        'phone': 'tel',
+        'url': 'url',
+    };
+    return typeMap[type] || 'text';
+};
+
+/**
+ * 格式化组件属性，用于模板生成
+ */
+export const formatComponentProps = (component: any): string => {
+    const props: string[] = [];
+    
+    if (component.props?.placeholder) {
+        props.push(`placeholder="${component.props.placeholder}"`);
+    }
+    
+    if (component.props?.maxLength && (component.type === 'input' || component.type === 'textarea')) {
+        props.push(`maxLength="${component.props.maxLength}"`);
+    }
+    
+    if (component.props?.minLength && component.type === 'textarea') {
+        props.push(`minLength="${component.props.minLength}"`);
+    }
+    
+    if (component.props?.type && component.type === 'date') {
+        props.push(`type="${component.props.type}"`);
+    }
+    
+    if (component.props?.format && component.type === 'date') {
+        props.push(`format="${component.props.format}"`);
+    }
+    
+    if (component.disabled) {
+        props.push(':disabled="true"');
+    }
+    
+    return props.join(' ');
+};
+
+/**
+ * 生成组件选项HTML
+ */
+export const generateOptionsTemplate = (component: any): string => {
+    if (!component.props?.options || component.props.options.length === 0) {
+        return '';
+    }
+    
+    const optionsList = component.props.options
+        .map((opt: any) => `<el-option label="${opt.label}" value="${opt.value}" />`)
+        .join('\n        ');
+    
+    return `
+        ${optionsList}`;
+};
+
+/**
+ * 验证组件配置是否完整
+ */
+export const validateComponentConfig = (component: any): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    if (!component.field) errors.push('字段名不能为空');
+    if (!component.label) errors.push('标签不能为空');
+    
+    if ((['select', 'radio', 'checkbox'].includes(component.type)) && 
+        (!component.props?.options || component.props.options.length === 0)) {
+        errors.push('需要至少添加一个选项');
+    }
+    
+    return {
+        valid: errors.length === 0,
+        errors
+    };
+};
+
+/**
+ * 克隆组件（用于复制功能）
+ */
+export const cloneComponent = (component: any): any => {
+    return JSON.parse(JSON.stringify(component));
 };

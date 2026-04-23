@@ -33,6 +33,50 @@
                 </el-form-item>
             </template>
 
+            <template v-else-if="component.type === 'textarea'">
+                <el-divider>多行文本配置</el-divider>
+
+                <el-form-item label="占位提示">
+                    <el-input v-model="component.props.placeholder" placeholder="请输入占位符" />
+                </el-form-item>
+
+                <el-form-item label="最小长度">
+                    <el-input-number v-model.number="component.props.minLength" :min="0" />
+                </el-form-item>
+
+                <el-form-item label="最大长度">
+                    <el-input-number v-model.number="component.props.maxLength" :min="0" />
+                </el-form-item>
+
+                <el-form-item label="行数">
+                    <el-input-number v-model.number="component.props.rows" :min="2" :max="20" />
+                </el-form-item>
+
+                <el-form-item label="是否可调整大小">
+                    <el-switch v-model="component.props.resize" />
+                </el-form-item>
+            </template>
+
+            <template v-else-if="component.type === 'number'">
+                <el-divider>数字输入配置</el-divider>
+
+                <el-form-item label="最小值">
+                    <el-input-number v-model.number="component.props.min" />
+                </el-form-item>
+
+                <el-form-item label="最大值">
+                    <el-input-number v-model.number="component.props.max" />
+                </el-form-item>
+
+                <el-form-item label="步长">
+                    <el-input-number v-model.number="component.props.step" :min="0.1" :step="0.1" />
+                </el-form-item>
+
+                <el-form-item label="占位提示">
+                    <el-input v-model="component.props.placeholder" placeholder="请输入占位符" />
+                </el-form-item>
+            </template>
+
             <template v-else-if="['select', 'radio', 'checkbox'].includes(component.type)">
                 <el-divider>选项配置</el-divider>
 
@@ -69,6 +113,21 @@
                         <el-option label="年" value="year" />
                         <el-option label="日期时间" value="datetime" />
                     </el-select>
+                </el-form-item>
+            </template>
+
+            <template v-else-if="component.type === 'time'">
+                <el-divider>时间配置</el-divider>
+
+                <el-form-item label="时间格式">
+                    <el-select v-model="component.props.format">
+                        <el-option label="HH:mm" value="HH:mm" />
+                        <el-option label="HH:mm:ss" value="HH:mm:ss" />
+                    </el-select>
+                </el-form-item>
+
+                <el-form-item label="是否为范围">
+                    <el-switch v-model="component.props.isRange" />
                 </el-form-item>
             </template>
         </el-form>
@@ -118,14 +177,56 @@ const props = defineProps<{
 const showOptionsDialog = ref(false);
 const editingOptions = ref<Array<{ label: string; value: string }>>([]);
 
+// 初始化不同类型组件的默认属性
+const initializeComponentProps = (component: FormComponent) => {
+    if (!component.props) {
+        component.props = {};
+    }
+
+    switch (component.type) {
+        case 'input':
+            component.props.placeholder ??= '请输入';
+            component.props.maxLength ??= 100;
+            component.props.minLength ??= 0;
+            break;
+        case 'textarea':
+            component.props.placeholder ??= '请输入';
+            component.props.maxLength ??= 500;
+            component.props.minLength ??= 0;
+            component.props.rows ??= 4;
+            component.props.resize ??= true;
+            break;
+        case 'number':
+            component.props.min ??= undefined;
+            component.props.max ??= undefined;
+            component.props.step ??= 1;
+            component.props.placeholder ??= '请输入数字';
+            break;
+        case 'select':
+        case 'radio':
+        case 'checkbox':
+            component.props.options ??= [];
+            break;
+        case 'date':
+            component.props.format ??= 'YYYY-MM-DD';
+            component.props.type ??= 'date';
+            break;
+        case 'time':
+            component.props.format ??= 'HH:mm:ss';
+            component.props.isRange ??= false;
+            break;
+        case 'switch':
+            component.props.activeText ??= '是';
+            component.props.inactiveText ??= '否';
+            break;
+    }
+};
+
 watch(
     () => props.component,
     (newComp) => {
-        if (newComp && !newComp.props) {
-            newComp.props = {
-                placeholder: '',
-                options: []
-            };
+        if (newComp) {
+            initializeComponentProps(newComp);
         }
     },
     { immediate: true }

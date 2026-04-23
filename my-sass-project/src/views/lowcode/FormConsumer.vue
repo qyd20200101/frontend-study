@@ -3,9 +3,17 @@ import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import { getFormSchemaApi } from "../../api/form";
 import type { FormSchema } from "../../types/lowcode";
-import { getElComponent, initFormData, generateValidationRules } from "../../utils/lowcode";
+import { 
+    getElComponent, 
+    initFormData, 
+    generateValidationRules,
+    formatComponentProps,
+    generateOptionsTemplate
+} from "../../utils/lowcode";
+import { generateValidationRulesCode } from "../../utils/validation";
 
 const loading = ref(true);
+const submitting = ref(false);
 const schema = ref<FormSchema | null>(null);
 const formRef = ref();
 
@@ -39,11 +47,15 @@ onMounted(async () => {
 const handleSubmit = async () => {
     if (!formRef.value) return;
     try {
+        submitting.value = true;
         await formRef.value.validate();
         console.log('提交数据:', formData.value);
         ElMessage.success('提交成功');
+        // TODO: 调用实际的提交 API
     } catch (error) {
         ElMessage.warning('请检查表单填写');
+    } finally {
+        submitting.value = false;
     }
 };
 
@@ -52,37 +64,45 @@ const handleReset = () => {
     formRef.value?.resetFields();
 };
 
-// 生成模板代码
+// 生成模板代码 - 改进版本，支持更多组件类型
 const generateTemplateCode = () => {
     if (!schema.value) return;
 
-    const { labelWidth, components } = schema.value;
+    const { labelWidth, components, title } = schema.value;
 
     // 生成完整的 Vue 组件代码
     let code = `<template>
   <div class="form-wrapper">
+    <div class="form-header">
+      <h2>${title || '表单'}</h2>
+    </div>
     <el-form 
       ref="formRef" 
       :model="formData" 
       :rules="formRules" 
-      label-width="${labelWidth}" 
+      label-width="${labelWidth || '100px'}" 
       label-position="top"
     >
 `;
 
     components.forEach(comp => {
-        code += `      <el-form-item label="${comp.label}" prop="${comp.field}">
-        <${getElComponent(comp.type)} 
+        const elComponent = getElComponent(comp.type);
+        const props = formatComponentProps(comp);
+        const optionsTemplate = generateOptionsTemplate(comp);
+        
+        code += `      <el-form-item label="${comp.label}" prop="${comp.field}"${comp.required ? ' required' : ''}>
+        <${elComponent}
           v-model="formData.${comp.field}"
-          ${comp.props?.placeholder ? `placeholder="${comp.props.placeholder}" ` : ''}
+          ${props}
           style="width: 100%"
-        />
+        ${optionsTemplate ? `>${optionsTemplate}
+        </${elComponent}>` : '/>'}
       </el-form-item>
 `;
     });
 
     code += `      <el-form-item>
-        <el-button type="primary" @click="handleSubmit">提交</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="submitting">提交</el-button>
         <el-button @click="handleReset">重置</el-button>
       </el-form-item>
     </el-form>
@@ -94,38 +114,34 @@ import { ref } from 'vue';
 import { ElMessage } from 'element-plus';
 
 const formRef = ref(null);
+const submitting = ref(false);
 const formData = ref({
 `;
 
     components.forEach(comp => {
         const defaultValue = comp.type === 'switch' ? 'false' :
-            ['checkbox', 'select', 'radio'].includes(comp.type) ? '[]' : 'null';
+            ['checkbox', 'select', 'radio'].includes(comp.type) ? '[]' : 
+            comp.type === 'number' ? '0' :
+            'null';
         code += `  ${comp.field}: ${defaultValue},\n`;
     });
 
     code += `});
 
-const formRules = ref({
-`;
-
-    components.forEach(comp => {
-        if (comp.required) {
-            const trigger = ['input'].includes(comp.type) ? 'blur' : 'change';
-            code += `  ${comp.field}: [{ required: true, message: '${comp.label}为必填项', trigger: '${trigger}' }],\n`;
-        }
-    });
-
-    code += `});
+${generateValidationRulesCode(components)}
 
 const handleSubmit = async () => {
   if (!formRef.value) return;
   try {
+    submitting.value = true;
     await formRef.value.validate();
     // 在这里调用提交 API
     console.log('表单数据:', formData.value);
     ElMessage.success('提交成功');
   } catch (error) {
     ElMessage.warning('请检查表单填写');
+  } finally {
+    submitting.value = false;
   }
 };
 
@@ -137,6 +153,19 @@ const handleReset = () => {
 <style scoped>
 .form-wrapper {
   padding: 20px;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.form-header {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.form-header h2 {
+  margin: 0;
+  color: #333;
 }
 </style>`;
 
@@ -153,6 +182,7 @@ const copyCode = async () => {
         ElMessage.error('复制失败');
     }
 };
+</script>
 </script>
 
 <template>
