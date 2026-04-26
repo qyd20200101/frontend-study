@@ -17,3 +17,12 @@ export const getFormSchemaApi = () =>{
         method: 'GET'
     })
 }
+
+// 提交真实的表单数据
+export const submitFormDataApi = (formId: string, data: Record<string, any>) => {
+    return request({
+        url: `/forms/${formId}/submit`,
+        method: 'POST',
+        data
+    });
+};

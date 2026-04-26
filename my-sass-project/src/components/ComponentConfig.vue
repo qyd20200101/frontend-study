@@ -130,7 +130,77 @@
                     <el-switch v-model="component.props.isRange" />
                 </el-form-item>
             </template>
+            <template v-else-if="component.type === 'grid'">
+                <el-divider>栅栏列配置</el-divider>
+                
+                <el-form-item label="栅栏列编辑">
+                    <div v-for="(col, idx) in component.columns" :key="idx" class="grid-col-config">
+                        <div class="col-header">
+                            <span>第 {{ idx + 1 }} 列</span>
+                            <el-button type="danger" link @click="removeGridColumn(idx)" :disabled="!component.columns || component.columns.length <= 1">删除</el-button>
+                        </div>
+                        <el-form-item label="跨度 (span 1-24)">
+                            <el-slider v-model="col.span" :min="1" :max="24" show-input />
+                        </el-form-item>
+                    </div>
+                    <el-button type="primary" plain class="w-full mt-2" @click="addGridColumn">
+                        + 添加列
+                    </el-button>
+                </el-form-item>
+            </template>
         </el-form>
+
+        <!-- 高级校验规则配置 -->
+        <template v-if="component && !['group', 'grid'].includes(component.type)">
+            <el-divider>高级校验规则</el-divider>
+            <div class="validation-config">
+                <div v-for="(rule, idx) in component.validation || []" :key="idx" class="validation-item">
+                    <div class="rule-header">
+                        <span>规则 {{ idx + 1 }}</span>
+                        <el-button type="danger" link @click="removeValidationRule(idx)">删除</el-button>
+                    </div>
+                    <el-form label-position="top">
+                        <el-form-item label="规则类型">
+                            <el-select v-model="rule.type">
+                                <el-option label="邮箱格式" value="email" />
+                                <el-option label="手机号格式" value="phone" />
+                                <el-option label="URL链接" value="url" />
+                                <el-option label="自定义正则" value="pattern" />
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item v-if="rule.type === 'pattern'" label="正则表达式">
+                            <el-input v-model="rule.pattern" placeholder="例如: ^[A-Za-z]+$" />
+                        </el-form-item>
+                        <el-form-item label="错误提示">
+                            <el-input v-model="rule.message" placeholder="校验失败的提示文字" />
+                        </el-form-item>
+                    </el-form>
+                </div>
+                <el-button type="primary" plain class="w-full mt-2" @click="addValidationRule">
+                    + 添加校验规则
+                </el-button>
+            </div>
+        </template>
+
+        <!-- 显隐联动配置 -->
+        <template v-if="component">
+            <el-divider>组件显隐联动</el-divider>
+            <div class="linkage-config">
+                <el-form label-position="top">
+                    <el-form-item label="开启条件显示">
+                        <el-switch v-model="hasCondition" @change="toggleCondition" />
+                    </el-form-item>
+                    <template v-if="hasCondition && component.condition">
+                        <el-form-item label="当依赖字段">
+                            <el-input v-model="component.condition.field" placeholder="例如: userType" />
+                        </el-form-item>
+                        <el-form-item label="等于以下值时显示">
+                            <el-input v-model="component.condition.value" placeholder="例如: admin" />
+                        </el-form-item>
+                    </template>
+                </el-form>
+            </div>
+        </template>
 
         <!-- 编辑选项对话框 -->
         <el-dialog v-model="showOptionsDialog" title="编辑选项" width="500px">
@@ -168,7 +238,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import type { FormComponent } from '../../types/lowcode';
+import type { FormComponent } from '../types/lowcode';
 
 const props = defineProps<{
     component: FormComponent | null;
@@ -176,6 +246,18 @@ const props = defineProps<{
 
 const showOptionsDialog = ref(false);
 const editingOptions = ref<Array<{ label: string; value: string }>>([]);
+
+// 联动显隐控制
+const hasCondition = ref(false);
+const toggleCondition = (val: boolean) => {
+    if (props.component) {
+        if (val) {
+            props.component.condition = { field: '', value: '' };
+        } else {
+            delete props.component.condition;
+        }
+    }
+};
 
 // 初始化不同类型组件的默认属性
 const initializeComponentProps = (component: FormComponent) => {
@@ -227,6 +309,7 @@ watch(
     (newComp) => {
         if (newComp) {
             initializeComponentProps(newComp);
+            hasCondition.value = !!newComp.condition;
         }
     },
     { immediate: true }
@@ -251,6 +334,39 @@ watch(
         }
     }
 );
+
+// 栅栏布局相关方法
+const addGridColumn = () => {
+    if (props.component && props.component.type === 'grid') {
+        if (!props.component.columns) props.component.columns = [];
+        props.component.columns.push({ span: 12, list: [] });
+    }
+};
+
+const removeGridColumn = (idx: number) => {
+    if (props.component && props.component.type === 'grid' && props.component.columns) {
+        props.component.columns.splice(idx, 1);
+    }
+};
+
+// 校验规则相关方法
+const addValidationRule = () => {
+    if (props.component) {
+        if (!props.component.validation) {
+            props.component.validation = [];
+        }
+        props.component.validation.push({
+            type: 'email',
+            message: '格式不正确'
+        });
+    }
+};
+
+const removeValidationRule = (idx: number) => {
+    if (props.component && props.component.validation) {
+        props.component.validation.splice(idx, 1);
+    }
+};
 </script>
 
 <style scoped>
@@ -268,5 +384,53 @@ watch(
 .option-item {
     padding: 10px 0;
     border-bottom: 1px solid #f0f0f0;
+}
+
+/* 栅栏配置样式 */
+.grid-col-config {
+    background: #f8f9fa;
+    border: 1px solid #ebeef5;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.grid-col-config .col-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 13px;
+    color: #606266;
+}
+
+/* 校验规则样式 */
+.validation-config {
+    margin-bottom: 20px;
+}
+
+.validation-item {
+    background: #fdfdfd;
+    border: 1px dashed #dcdfe6;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.validation-item .rule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 13px;
+    color: #409eff;
+}
+
+.w-full {
+    width: 100%;
+}
+.mt-2 {
+    margin-top: 8px;
 }
 </style>

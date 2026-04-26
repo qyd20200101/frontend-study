@@ -9,9 +9,10 @@ import { ElMessage } from 'element-plus';
 import type { FormComponent, FormSchema } from '../../types/lowcode';
 //引入接口
 import { saveFormSchemeApi, getFormSchemaApi } from "../../api/form";
-import { getElComponent, getTriggerType, formatComponentProps, generateOptionsTemplate } from "../../utils/lowcode";
-import { generateValidationRulesCode } from "../../utils/validation";
+import { getElComponent } from "../../utils/lowcode";
 import ComponentConfig from '../../components/ComponentConfig.vue';
+import BuilderNode from '../../components/BuilderNode.vue';
+import { SimpleASTGenerator } from "../../utils/simpleAstGenerator";
 // --- 状态管理 ---
 const schema = ref<FormSchema>({
     formId: `form_${Date.now()}`,
@@ -29,7 +30,9 @@ const materialList = ref([
     { type: 'checkbox', label: '复选框', icon: 'DocumentCopy' },
     { type: 'switch', label: '开关', icon: 'SwitchButton' },
     { type: 'date', label: '日期选择', icon: 'Calendar' },
-    { type: 'time', label: '时间选择', icon: 'Timer' }
+    { type: 'time', label: '时间选择', icon: 'Timer' },
+    { type: 'group', label: '表单分组', icon: 'Folder' },
+    { type: 'grid', label: '栅栏布局', icon: 'Grid' }
 ]);
 
 const activeComponentId = ref<string | null>(null);
@@ -39,73 +42,73 @@ const generatedJsonCode = ref('');
 
 // --- 核心逻辑 ---
 
-// 🚀 获取当前选中的组件对象 (用于右侧面板展示)
-const activeComponent = computed(() => {
-    return schema.value.components.find(c => c.id === activeComponentId.value) || null;
-});
-
-//新增：画布内部的拖拽排序逻辑
-//记录内部拖拽的起始索引
-const handleCanvasDragStart = (e: DragEvent, index: number) => {
-    //明确告诉dataTransfer,这是内部移动不是左边新增
-    e.dataTransfer?.setData('moveIndex', index.toString());
+const findComponentAndParent = (list: FormComponent[], id: string): { parent: FormComponent[], index: number, comp: FormComponent } | null => {
+    for (let i = 0; i < list.length; i++) {
+        if (list[i].id === id) return { parent: list, index: i, comp: list[i] };
+        if (list[i].list) {
+            const result = findComponentAndParent(list[i].list!, id);
+            if (result) return result;
+        }
+        if (list[i].columns) {
+            for (let c = 0; c < list[i].columns!.length; c++) {
+                if (list[i].columns![c].list) {
+                    const result = findComponentAndParent(list[i].columns![c].list!, id);
+                    if (result) return result;
+                }
+            }
+        }
+    }
+    return null;
 };
 
-//放置在某个具体组件上时触发
-const handleCanvasDrop = (e: DragEvent, dropIndex: number) => {
-    //阻止冒泡，防止触发外层大画布的drop
-    e.stopPropagation();
+// 🚀 获取当前选中的组件对象 (用于右侧面板展示)
+const activeComponent = computed(() => {
+    if (!activeComponentId.value) return null;
+    const result = findComponentAndParent(schema.value.components, activeComponentId.value);
+    return result ? result.comp : null;
+});
 
-    const moveIndexStr = e.dataTransfer?.getData('moveIndex');
-    const type = e.dataTransfer?.getData('componentType');
-
-    if (moveIndexStr) {
-        //场景A：内部上下拖拽排序
-        const dragIndex = parseInt(moveIndexStr);
-        if (dragIndex === dropIndex) return;
-
-        //核心思路：把元素从原数组抽出来，塞到新位置
-        const draggedItem = schema.value.components.splice(dragIndex, 1)[0];
-        schema.value.components.splice(dropIndex, 0, draggedItem);
-    } else {
-        //场景B：从左侧物料拖进来，但精确插到了某个组件中间
-        const newComp: FormComponent = {
-            id: `${type}_${Date.now().toString().slice(-6)}`,
-            type: type as any,
-            label: `新建组件`,
-            field: `field_${Date.now().toString().slice(-6)}`,
-            required: false,
-            props: { placeholder: '请输入' }
-        };
-
-        //插入到当前鼠标悬浮的组件位置
-        schema.value.components.splice(dropIndex, 0, newComp);
-        activeComponentId.value = newComp.id;
-    }
+const handleCanvasDragStart = (e: DragEvent, id: string) => {
+    e.dataTransfer?.setData('moveId', id);
 };
 
 const handleDragStart = (e: DragEvent, type: string) => {
     e.dataTransfer?.setData('componentType', type);
 };
-//修复原本大画布的Drop,只处理从左侧拖到画布空白处
-const handleDrop = (e: DragEvent) => {
-    //如果时内部移动拖到空白处，直接忽略
-    if (e.dataTransfer?.getData('moveIndex')) return;
+
+const handleDrop = (e: DragEvent, targetList: FormComponent[], dropIndex: number) => {
+    e.stopPropagation();
+    const moveId = e.dataTransfer?.getData('moveId');
     const type = e.dataTransfer?.getData('componentType') as any;
-    if (!type) return;
 
-    const newComp: FormComponent = {
-        id: `${type}_${Date.now().toString().slice(-6)}`,
-        type: type,
-        label: `新建${materialList.value.find(m => m.type === type)?.label}`,
-        field: `field_${Date.now().toString().slice(-6)}`,
-        required: false,
-        props: { placeholder: '请输入内容' }
-    };
+    if (moveId) {
+        // 内部移动
+        const result = findComponentAndParent(schema.value.components, moveId);
+        if (result) {
+            const item = result.parent.splice(result.index, 1)[0];
+            let finalIndex = dropIndex;
+            if (result.parent === targetList && dropIndex > result.index) {
+                finalIndex--;
+            }
+            targetList.splice(finalIndex, 0, item);
+        }
+    } else if (type) {
+        // 新增
+        const newComp: FormComponent = {
+            id: `${type}_${Date.now().toString().slice(-6)}`,
+            type: type,
+            label: `新建${materialList.value.find(m => m.type === type)?.label || '组件'}`,
+            field: `field_${Date.now().toString().slice(-6)}`,
+            required: false,
+            props: { placeholder: '请输入内容' }
+        };
+        
+        if (type === 'group') newComp.list = [];
+        if (type === 'grid') newComp.columns = [{span: 12, list: []}, {span: 12, list: []}];
 
-    schema.value.components.push(newComp);
-    // 自动选中新拖入的组件
-    activeComponentId.value = newComp.id;
+        targetList.splice(dropIndex, 0, newComp);
+        activeComponentId.value = newComp.id;
+    }
 };
 
 const selectComponent = (id: string) => {
@@ -113,7 +116,10 @@ const selectComponent = (id: string) => {
 };
 
 const deleteComponent = (id: string) => {
-    schema.value.components = schema.value.components.filter(c => c.id !== id);
+    const result = findComponentAndParent(schema.value.components, id);
+    if (result) {
+        result.parent.splice(result.index, 1);
+    }
     if (activeComponentId.value === id) activeComponentId.value = null;
 };
 
@@ -122,95 +128,19 @@ const generateCode = () => {
     if (!schema.value.components.length) return ElMessage.warning('画布为空');
     generatedJsonCode.value = JSON.stringify(schema.value, null, 2);
 
-    // 生成 Vue 模板 - 改进版本
-    let tpl = `<template>
-  <div class="form-wrapper">
-    <el-form 
-      ref="formRef" 
-      :model="formData" 
-      :rules="formRules" 
-      label-width="${schema.value.labelWidth || '100px'}" 
-      label-position="top"
-    >
-`;
-    
-    schema.value.components.forEach(c => {
-        const elComponent = getElComponent(c.type);
-        const props = formatComponentProps(c);
-        const optionsTemplate = generateOptionsTemplate(c);
+    try {
+        const code = SimpleASTGenerator.generateComponent(schema.value.components);
+        const validation = SimpleASTGenerator.validateGeneratedCode(code);
         
-        tpl += `      <el-form-item label="${c.label}" prop="${c.field}"${c.required ? ' required' : ''}>
-        <${elComponent}
-          v-model="formData.${c.field}"
-          ${props}
-          style="width: 100%"
-        ${optionsTemplate ? `>${optionsTemplate}
-        </${elComponent}>` : '/>'}
-      </el-form-item>
-`;
-    });
-    
-    tpl += `      <el-form-item>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">提交</el-button>
-        <el-button @click="handleReset">重置</el-button>
-      </el-form-item>
-    </el-form>
-  </div>
-</template>
-`;
-
-    // 组装 Script - 改进版本
-    let script = `<script setup>
-import { ref } from 'vue';
-import { ElMessage } from 'element-plus';
-
-const formRef = ref(null);
-const submitting = ref(false);
-const formData = ref({
-`;
-    
-    schema.value.components.forEach(c => {
-        const defaultValue = c.type === 'switch' ? 'false' :
-            ['checkbox', 'select', 'radio'].includes(c.type) ? '[]' : 
-            c.type === 'number' ? '0' :
-            'null';
-        script += `  ${c.field}: ${defaultValue},\n`;
-    });
-    
-    script += `});
-
-${generateValidationRulesCode(schema.value.components)}
-
-const handleSubmit = async () => {
-  if (!formRef.value) return;
-  try {
-    submitting.value = true;
-    await formRef.value.validate();
-    // 在这里调用提交 API
-    console.log('表单数据:', formData.value);
-    ElMessage.success('提交成功');
-  } catch (error) {
-    ElMessage.warning('请检查表单填写');
-  } finally {
-    submitting.value = false;
-  }
-};
-
-const handleReset = () => {
-  formRef.value?.resetFields();
-};
-<\/script>
-
-<style scoped>
-.form-wrapper {
-  padding: 20px;
-  background: #fff;
-  border-radius: 4px;
-}
-</style>`;
-
-    generatedVueCode.value = tpl + '\n' + script;
-    isPreviewVisible.value = true;
+        if (validation.valid) {
+            generatedVueCode.value = code;
+            isPreviewVisible.value = true;
+        } else {
+            ElMessage.error(`代码生成失败: ${validation.errors.join(', ')}`);
+        }
+    } catch (error) {
+        ElMessage.error('代码生成出错: ' + (error as Error).message);
+    }
 };
 
 const handleSave = async () => {
@@ -273,31 +203,14 @@ onMounted(async () => {
                         <el-input v-model="schema.title" class="form-title-input" />
                     </div>
                     <div class="canvas-body" :class="{ 'empty-hint': !schema.components.length }" @dragover.prevent
-                        @drop="handleDrop">
+                        @drop="handleDrop($event, schema.components, schema.components.length)">
                         <p v-if="!schema.components.length">从左侧拖拽组件至此</p>
                         <transition-group name="list">
-                            <div v-for="(comp, index) in schema.components" :key="comp.id" class="canvas-comp-item"
-                                :class="{ 'is-active': activeComponentId === comp.id }" draggable="true"
-                                @dragstart="handleCanvasDragStart($event, index)" @dragover.prevent
-                                @drop="handleCanvasDrop($event, index)" @click.stop="selectComponent(comp.id)">
-
-                                <div class="drag-handler">
-                                    <el-icon><i-ep-rank /></el-icon>
-                                </div>
-
-                                <div class="comp-mask"></div>
-                                <div class="comp-label" :style="{ width: schema.labelWidth }">
-                                    <span v-if="comp.required" style="color:red">*</span> {{ comp.label }}
-                                </div>
-                                <div class="comp-content">
-                                    <component :is="getElComponent(comp.type)" v-bind="comp.props" style="width:100%" />
-                                </div>
-                                <div v-if="activeComponentId === comp.id" class="comp-actions">
-                                    <el-button type="danger" circle size="small" @click.stop="deleteComponent(comp.id)">
-                                        <el-icon><i-ep-delete /></el-icon>
-                                    </el-button>
-                                </div>
-                            </div>
+                            <BuilderNode v-for="(comp, index) in schema.components" :key="comp.id"
+                                :comp="comp" :parent-list="schema.components" :index="index"
+                                :active-component-id="activeComponentId" :label-width="schema.labelWidth"
+                                @select="selectComponent" @delete="deleteComponent"
+                                @dragstart="handleCanvasDragStart" @drop="handleDrop" />
                         </transition-group>
                     </div>
                 </div>
@@ -392,47 +305,6 @@ onMounted(async () => {
     min-height: 100%;
 }
 
-.canvas-comp-item {
-    position: relative;
-    padding: 10px;
-    border: 1px dashed #dcdfe6;
-    margin-bottom: 10px;
-    display: flex;
-    transition: all 0.2s;
-    cursor: pointer;
-}
-
-.canvas-comp-item.is-active {
-    border: 2px solid #409eff;
-    background: #ecf5ff;
-}
-
-.comp-mask {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 5;
-}
-
-.comp-label {
-    width: 100px;
-    flex-shrink: 0;
-    font-size: 14px;
-}
-
-.comp-content {
-    flex: 1;
-}
-
-.comp-actions {
-    position: absolute;
-    right: -10px;
-    top: -10px;
-    z-index: 10;
-}
-
 .material-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -469,21 +341,5 @@ onMounted(async () => {
     font-size: 20px;
     font-weight: bold;
     text-align: center;
-}
-
-/* 🚀 拖拽手柄样式 */
-.drag-handler {
-    display: flex;
-    align-items: center;
-    color: #909399;
-    cursor: move;
-    padding-right: 10px;
-    opacity: 0.3;
-    transition: opacity 0.2s;
-}
-
-.canvas-comp-item:hover .drag-handler {
-    opacity: 1;
-    /* 鼠标悬浮时才显示出明显的拖拽手柄 */
 }
 </style>

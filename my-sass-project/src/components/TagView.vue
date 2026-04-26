@@ -49,14 +49,14 @@ onMounted(() =>{
         v-for="tag in tagsViewStore.visitedViews"
         :key="tag.path"
         :to="tag.path"
-        class="tags=view-item"
+        class="tags-view-item"
         :class="{active: isActive(tag.path)}">
-            {{ tag.title || tag.meta?.title }}
+            <span class="tag-title">{{ tag.title || tag.meta?.title }}</span>
             <span
             v-if="tagsViewStore.visitedViews.length> 1"
             class="icon-close"
             @click.prevent.stop="closeSelectedTag(tag)">
-                X
+                <el-icon><i-ep-close /></el-icon>
             </span>
         </router-link>
     </div>
@@ -83,33 +83,53 @@ onMounted(() =>{
     align-items: center;
     position: relative;
     cursor: pointer;
-    height: 26px;
-    border: 1px solid #d8dce5;
-    color: #495060;
+    height: 28px;
+    border: 1px solid #e4e7ed;
+    color: #606266;
     background: #fff;
-    padding: 0 10px;
-    font-size: 12px;
+    padding: 0 12px;
+    font-size: 13px;
     text-decoration: none;
     border-radius: 4px;
-    transition: all 0.3s;
+    transition: all 0.3s cubic-bezier(.645,.045,.355,1);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+.tags-view-item:hover {
+    color: #409eff;
+    border-color: #c6e2ff;
+    background-color: #ecf5ff;
 }
 .tags-view-item.active {
     background-color: #409eff;
     color: #fff;
     border-color: #409eff;
+    box-shadow: 0 2px 4px rgba(64,158,255,0.2);
+}
+.tags-view-item.active::before {
+    content: '';
+    background: #fff;
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 6px;
 }
 .icon-close {
-    margin-left: 6px;
+    margin-left: 8px;
     border-radius: 50%;
-    width: 14px;
-    height: 14px;
-    line-height: 12px;
-    text-align: center;
-    font-size: 14px;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
     transition: all 0.3s;
 }
 .icon-close:hover {
-    background-color: rgba(0,0,0,0.2);
+    background-color: #f56c6c;
     color: #fff;
+}
+.tags-view-item.active .icon-close:hover {
+    background-color: rgba(255,255,255,0.3);
 }
 </style>

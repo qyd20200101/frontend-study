@@ -1,16 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
-import { getFormSchemaApi } from "../../api/form";
+import { getFormSchemaApi, submitFormDataApi } from "../../api/form";
 import type { FormSchema } from "../../types/lowcode";
 import { 
-    getElComponent, 
     initFormData, 
-    generateValidationRules,
-    formatComponentProps,
-    generateOptionsTemplate
+    generateValidationRules
 } from "../../utils/lowcode";
-import { generateValidationRulesCode } from "../../utils/validation";
+import FormNode from "../../components/FormNode.vue";
+import { SimpleASTGenerator } from "../../utils/simpleAstGenerator";
 
 const loading = ref(true);
 const submitting = ref(false);
@@ -45,15 +43,23 @@ onMounted(async () => {
 
 // 提交表单
 const handleSubmit = async () => {
-    if (!formRef.value) return;
+    if (!formRef.value || !schema.value) return;
     try {
         submitting.value = true;
         await formRef.value.validate();
+        
+        // 调用真实 API 提交数据
+        await submitFormDataApi(schema.value.formId, formData.value);
+        
         console.log('提交数据:', formData.value);
-        ElMessage.success('提交成功');
-        // TODO: 调用实际的提交 API
+        ElMessage.success('表单提交成功');
     } catch (error) {
-        ElMessage.warning('请检查表单填写');
+        if (error && (error as any).name === 'ValidationError') {
+            ElMessage.warning('请检查表单填写');
+        } else {
+            ElMessage.error('表单提交失败');
+            console.error('提交错误:', error);
+        }
     } finally {
         submitting.value = false;
     }
@@ -64,113 +70,27 @@ const handleReset = () => {
     formRef.value?.resetFields();
 };
 
-// 生成模板代码 - 改进版本，支持更多组件类型
+// 生成模板代码 - 使用 AST 生成器
 const generateTemplateCode = () => {
     if (!schema.value) return;
 
-    const { labelWidth, components, title } = schema.value;
-
-    // 生成完整的 Vue 组件代码
-    let code = `<template>
-  <div class="form-wrapper">
-    <div class="form-header">
-      <h2>${title || '表单'}</h2>
-    </div>
-    <el-form 
-      ref="formRef" 
-      :model="formData" 
-      :rules="formRules" 
-      label-width="${labelWidth || '100px'}" 
-      label-position="top"
-    >
-`;
-
-    components.forEach(comp => {
-        const elComponent = getElComponent(comp.type);
-        const props = formatComponentProps(comp);
-        const optionsTemplate = generateOptionsTemplate(comp);
+    try {
+        // 使用 AST 生成器生成代码
+        const generatedCodeContent = SimpleASTGenerator.generateComponent(schema.value.components);
         
-        code += `      <el-form-item label="${comp.label}" prop="${comp.field}"${comp.required ? ' required' : ''}>
-        <${elComponent}
-          v-model="formData.${comp.field}"
-          ${props}
-          style="width: 100%"
-        ${optionsTemplate ? `>${optionsTemplate}
-        </${elComponent}>` : '/>'}
-      </el-form-item>
-`;
-    });
-
-    code += `      <el-form-item>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">提交</el-button>
-        <el-button @click="handleReset">重置</el-button>
-      </el-form-item>
-    </el-form>
-  </div>
-</template>
-
-<script setup>
-import { ref } from 'vue';
-import { ElMessage } from 'element-plus';
-
-const formRef = ref(null);
-const submitting = ref(false);
-const formData = ref({
-`;
-
-    components.forEach(comp => {
-        const defaultValue = comp.type === 'switch' ? 'false' :
-            ['checkbox', 'select', 'radio'].includes(comp.type) ? '[]' : 
-            comp.type === 'number' ? '0' :
-            'null';
-        code += `  ${comp.field}: ${defaultValue},\n`;
-    });
-
-    code += `});
-
-${generateValidationRulesCode(components)}
-
-const handleSubmit = async () => {
-  if (!formRef.value) return;
-  try {
-    submitting.value = true;
-    await formRef.value.validate();
-    // 在这里调用提交 API
-    console.log('表单数据:', formData.value);
-    ElMessage.success('提交成功');
-  } catch (error) {
-    ElMessage.warning('请检查表单填写');
-  } finally {
-    submitting.value = false;
-  }
-};
-
-const handleReset = () => {
-  formRef.value?.resetFields();
-};
-<\/script>
-
-<style scoped>
-.form-wrapper {
-  padding: 20px;
-  background: #fff;
-  border-radius: 4px;
-}
-
-.form-header {
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.form-header h2 {
-  margin: 0;
-  color: #333;
-}
-</style>`;
-
-    generatedCode.value = code;
-    showCodeDialog.value = true;
+        // 验证生成的代码
+        const validation = SimpleASTGenerator.validateGeneratedCode(generatedCodeContent);
+        
+        if (validation.valid) {
+            generatedCode.value = generatedCodeContent;
+            showCodeDialog.value = true;
+            ElMessage.success('代码生成成功');
+        } else {
+            ElMessage.error(`代码生成失败: ${validation.errors.join(', ')}`);
+        }
+    } catch (error) {
+        ElMessage.error('代码生成出错: ' + (error as Error).message);
+    }
 };
 
 // 复制代码到剪贴板
@@ -182,7 +102,6 @@ const copyCode = async () => {
         ElMessage.error('复制失败');
     }
 };
-</script>
 </script>
 
 <template>
@@ -196,14 +115,13 @@ const copyCode = async () => {
 
             <el-form ref="formRef" :model="formData" :rules="formRules" :label-width="schema.labelWidth"
                 label-position="top">
-                <el-form-item v-for="comp in schema.components" :key="comp.id" :label="comp.label" :prop="comp.field">
-                    <component :is="getElComponent(comp.type)" v-model="formData[comp.field]" v-bind="comp.props"
-                        :placeholder="comp.props?.placeholder || '请输入' + comp.label" />
-                </el-form-item>
+                <template v-for="comp in schema.components" :key="comp.id">
+                    <FormNode :comp="comp" :form-data="formData" />
+                </template>
             </el-form>
 
             <div class="form-actions">
-                <el-button type="primary" @click="handleSubmit">提交</el-button>
+                <el-button type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
                 <el-button @click="handleReset">重置</el-button>
                 <el-button type="info" @click="generateTemplateCode">生成模板代码</el-button>
             </div>
@@ -223,45 +141,77 @@ const copyCode = async () => {
 
 <style scoped>
 .form-consumer {
-    padding: 20px;
-    min-height: 100vh;
-    background: #f5f7fa;
+    padding: 30px 20px;
+    min-height: calc(100vh - 84px);
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
+    overflow-x: hidden;
+    display: flex;
+    justify-content: center;
 }
 
 .form-card {
-    max-width: 800px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 900px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.form-card:hover {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
 }
 
 .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #ebeef5;
+    margin-bottom: 20px;
 }
 
 .form-title {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
+    color: #2c3e50;
+    position: relative;
+    padding-left: 12px;
+}
+
+.form-title::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 18px;
+    background: #409eff;
+    border-radius: 2px;
 }
 
 .form-actions {
-    margin-top: 20px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px dashed #ebeef5;
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 15px;
 }
 
 .code-preview {
     background: #282c34;
     color: #abb2bf;
     padding: 15px;
-    border-radius: 4px;
+    border-radius: 8px;
     max-height: 500px;
     overflow: auto;
     white-space: pre-wrap;
     word-break: break-word;
-    font-size: 12px;
-    line-height: 1.5;
-    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    font-family: 'Fira Code', 'Courier New', monospace;
 }
+
 </style>

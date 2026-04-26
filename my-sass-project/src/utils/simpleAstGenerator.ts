@@ -3,8 +3,7 @@
  * 可直接集成到项目中
  */
 
-import type { FormComponent } from '@/types/lowcode';
-import prettier from 'prettier';
+import type { FormComponent } from '../types/lowcode';
 
 /**
  * 简单的 AST 代码生成器 - 无外部依赖版本
@@ -22,18 +21,7 @@ export class SimpleASTGenerator {
     code += `<script setup>\n${script}</script>\n\n`;
     code += `<style scoped>\n${style}</style>`;
 
-    // 使用 prettier 格式化（如果可用）
-    try {
-      return prettier.format(code, {
-        parser: 'vue',
-        singleQuote: true,
-        semi: true,
-        tabWidth: 2,
-      });
-    } catch {
-      // 如果 prettier 不可用，返回未格式化的代码
-      return code;
-    }
+    return code;
   }
 
   /**
@@ -54,7 +42,7 @@ export class SimpleASTGenerator {
 
     // 生成每个表单项
     components.forEach((comp) => {
-      template += this.generateFormItem(comp);
+      template += this.generateItem(comp, 3);
     });
 
     // 生成操作按钮
@@ -69,31 +57,88 @@ export class SimpleASTGenerator {
     return template;
   }
 
+  private static generateItem(comp: FormComponent, baseIndentLevel: number): string {
+    if (comp.type === 'group') {
+      return this.generateGroupItem(comp, baseIndentLevel);
+    } else if (comp.type === 'grid') {
+      return this.generateGridItem(comp, baseIndentLevel);
+    } else {
+      return this.generateFormItem(comp, baseIndentLevel);
+    }
+  }
+
+  private static generateGroupItem(comp: FormComponent, baseIndentLevel: number = 3): string {
+    const indent = (level: number) => '  '.repeat(level);
+    let item = indent(baseIndentLevel) + `<div class="form-group">\n`;
+    item += indent(baseIndentLevel + 1) + `<div class="group-title">${this.escapeString(comp.label)}</div>\n`;
+    if (comp.list) {
+      comp.list.forEach(child => {
+        item += this.generateItem(child, baseIndentLevel + 1);
+      });
+    }
+    item += indent(baseIndentLevel) + `</div>\n`;
+    return item;
+  }
+
+  private static generateGridItem(comp: FormComponent, baseIndentLevel: number = 3): string {
+    const indent = (level: number) => '  '.repeat(level);
+    let item = indent(baseIndentLevel) + `<el-row :gutter="20">\n`;
+    if (comp.columns) {
+      comp.columns.forEach(col => {
+        item += indent(baseIndentLevel + 1) + `<el-col :span="${col.span}">\n`;
+        if (col.list) {
+          col.list.forEach(child => {
+            item += this.generateItem(child, baseIndentLevel + 2);
+          });
+        }
+        item += indent(baseIndentLevel + 1) + `</el-col>\n`;
+      });
+    }
+    item += indent(baseIndentLevel) + `</el-row>\n`;
+    return item;
+  }
+
   /**
    * 生成单个表单项
    */
-  private static generateFormItem(comp: FormComponent): string {
+  private static generateFormItem(comp: FormComponent, baseIndentLevel: number = 3): string {
     const indent = (level: number) => '  '.repeat(level);
     const componentName = this.getElComponent(comp.type);
 
-    let item = indent(3) + `<el-form-item label="${this.escapeString(comp.label)}" prop="${comp.field}">\n`;
-    item += indent(4) + `<${componentName}\n`;
-    item += indent(5) + `v-model="formData.${comp.field}"\n`;
+    let item = indent(baseIndentLevel) + `<el-form-item label="${this.escapeString(comp.label)}" prop="${comp.field}">\n`;
+    item += indent(baseIndentLevel + 1) + `<${componentName}\n`;
+    item += indent(baseIndentLevel + 2) + `v-model="formData.${comp.field}"\n`;
 
     if (comp.props?.placeholder) {
-      item += indent(5) + `placeholder="${this.escapeString(comp.props.placeholder)}"\n`;
+      item += indent(baseIndentLevel + 2) + `placeholder="${this.escapeString(comp.props.placeholder)}"\n`;
     }
 
     // 为 select/radio/checkbox 添加 options 属性
     if (['select', 'radio', 'checkbox'].includes(comp.type)) {
-      item += indent(5) + `:options="options.${comp.field}"\n`;
+      item += indent(baseIndentLevel + 2) + `:options="options.${comp.field}"\n`;
     }
 
-    item += indent(5) + 'style="width: 100%"\n';
-    item += indent(4) + `/>\n`;
-    item += indent(3) + '</el-form-item>\n';
+    item += indent(baseIndentLevel + 2) + 'style="width: 100%"\n';
+    item += indent(baseIndentLevel + 1) + `/>\n`;
+    item += indent(baseIndentLevel) + '</el-form-item>\n';
 
     return item;
+  }
+
+  private static flattenComponents(components: FormComponent[]): FormComponent[] {
+    let flat: FormComponent[] = [];
+    components.forEach(comp => {
+      if (comp.type === 'group' && comp.list) {
+        flat = flat.concat(this.flattenComponents(comp.list));
+      } else if (comp.type === 'grid' && comp.columns) {
+        comp.columns.forEach(col => {
+          if (col.list) flat = flat.concat(this.flattenComponents(col.list));
+        });
+      } else if (comp.type !== 'group' && comp.type !== 'grid') {
+        flat.push(comp);
+      }
+    });
+    return flat;
   }
 
   /**
@@ -101,6 +146,7 @@ export class SimpleASTGenerator {
    */
   private static generateScript(components: FormComponent[]): string {
     let script = '';
+    const flatComponents = this.flattenComponents(components);
 
     // 导入声明
     script += "import { ref } from 'vue';\n";
@@ -111,20 +157,20 @@ export class SimpleASTGenerator {
 
     // formData
     script += 'const formData = ref({\n';
-    components.forEach((comp) => {
+    flatComponents.forEach((comp) => {
       const defaultValue = this.getDefaultValue(comp.type);
       script += `  ${comp.field}: ${defaultValue},\n`;
     });
     script += '});\n\n';
 
     // options（仅在有 select/radio/checkbox 时生成）
-    const hasOptionsComponent = components.some((c) =>
+    const hasOptionsComponent = flatComponents.some((c) =>
       ['select', 'radio', 'checkbox'].includes(c.type)
     );
 
     if (hasOptionsComponent) {
       script += 'const options = ref({\n';
-      components
+      flatComponents
         .filter((c) => ['select', 'radio', 'checkbox'].includes(c.type))
         .forEach((comp) => {
           script += `  ${comp.field}: [],\n`;
@@ -134,7 +180,7 @@ export class SimpleASTGenerator {
 
     // formRules
     script += 'const formRules = ref({\n';
-    components.forEach((comp) => {
+    flatComponents.forEach((comp) => {
       if (comp.required) {
         const trigger = ['input'].includes(comp.type) ? 'blur' : 'change';
         script += `  ${comp.field}: [\n`;
@@ -173,9 +219,44 @@ export class SimpleASTGenerator {
    */
   private static generateStyle(): string {
     return `.form-wrapper {
-  padding: 20px;
-  max-width: 600px;
+  padding: 30px;
+  max-width: 900px;
   margin: 0 auto;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+.form-group {
+  margin-bottom: 24px;
+  padding: 24px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.02);
+  transition: box-shadow 0.3s;
+}
+.form-group:hover {
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.06);
+  border-color: #dcdfe6;
+}
+.group-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ebeef5;
+  color: #303133;
+  display: flex;
+  align-items: center;
+}
+.group-title::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  background-color: #409eff;
+  margin-right: 10px;
+  border-radius: 2px;
 }`;
   }
 

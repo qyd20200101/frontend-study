@@ -13,11 +13,7 @@ export interface ValidationRule {
     trigger?: 'blur' | 'change';
 }
 
-export interface ComponentValidation extends ValidationRule {
-    field: string;
-    label: string;
-    type: string;
-}
+
 
 // 常用正则表达式
 const PATTERNS = {

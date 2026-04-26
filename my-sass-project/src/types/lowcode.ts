@@ -8,7 +8,9 @@ export type ComponentType =
   | 'checkbox' 
   | 'switch' 
   | 'date' 
-  | 'time';
+  | 'time'
+  | 'group'
+  | 'grid';
 
 // 验证规则配置
 export interface ValidationRule {
@@ -29,10 +31,15 @@ export interface FormComponent {
     required: boolean;
     props: Record<string, any>;
     validation?: ValidationRule[];  // 新增：复杂验证规则
+    condition?: { field: string; value: string | boolean | number }; // 联动逻辑
     visible?: boolean;              // 新增：是否显示该字段
     disabled?: boolean;             // 新增：是否禁用
     help?: string;                  // 新增：帮助文本
     className?: string;             // 新增：自定义样式类
+    
+    // 布局特定属性
+    columns?: { span: number; list: FormComponent[] }[]; // 栅栏布局的列
+    list?: FormComponent[];                              // 分组布局的子组件
 }
 
 //表单的全局配置

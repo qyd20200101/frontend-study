@@ -2,24 +2,35 @@
  * 低代码平台公共工具函数 - 核心功能
  */
 
-import { generateElValidationRules, getTriggerByType } from './validation';
+import { generateElValidationRules } from './validation';
+
+import {
+    ElInput,
+    ElInputNumber,
+    ElSelect,
+    ElSwitch,
+    ElDatePicker,
+    ElTimePicker,
+    ElRadioGroup,
+    ElCheckboxGroup
+} from 'element-plus';
 
 /**
  * 获取组件类型对应的 Element Plus 组件名称
  */
-export const getElComponent = (type: string): string => {
-    const map: Record<string, string> = {
-        'input': 'el-input',
-        'textarea': 'el-input',
-        'number': 'el-input-number',
-        'select': 'el-select',
-        'switch': 'el-switch',
-        'date': 'el-date-picker',
-        'time': 'el-time-picker',
-        'radio': 'el-radio-group',
-        'checkbox': 'el-checkbox-group',
+export const getElComponent = (type: string): any => {
+    const map: Record<string, any> = {
+        'input': ElInput,
+        'textarea': ElInput,
+        'number': ElInputNumber,
+        'select': ElSelect,
+        'switch': ElSwitch,
+        'date': ElDatePicker,
+        'time': ElTimePicker,
+        'radio': ElRadioGroup,
+        'checkbox': ElCheckboxGroup,
     };
-    return map[type] || 'el-input';
+    return map[type] || ElInput;
 };
 
 /**
@@ -51,10 +62,29 @@ export const getTriggerType = (type: string): string => {
 };
 
 /**
+ * 递归拍平嵌套的组件列表（提取 group 和 grid 内的真实组件）
+ */
+export const flattenComponents = (components: any[]): any[] => {
+    let flat: any[] = [];
+    components.forEach(comp => {
+        if (comp.type === 'group' && comp.list) {
+            flat = flat.concat(flattenComponents(comp.list));
+        } else if (comp.type === 'grid' && comp.columns) {
+            comp.columns.forEach((col: any) => {
+                if (col.list) flat = flat.concat(flattenComponents(col.list));
+            });
+        } else if (comp.type !== 'group' && comp.type !== 'grid') {
+            flat.push(comp);
+        }
+    });
+    return flat;
+};
+
+/**
  * 生成表单验证规则 - 完整版本，支持多种规则类型
  */
 export const generateValidationRules = (components: any[]): Record<string, any> => {
-    return generateElValidationRules(components);
+    return generateElValidationRules(flattenComponents(components));
 };
 
 /**
@@ -62,8 +92,9 @@ export const generateValidationRules = (components: any[]): Record<string, any> 
  */
 export const initFormData = (components: any[]): Record<string, any> => {
     const formData: Record<string, any> = {};
+    const flatComps = flattenComponents(components);
     
-    components.forEach(comp => {
+    flatComps.forEach(comp => {
         formData[comp.field] = getDefaultValue(comp.type);
     });
     
@@ -159,4 +190,14 @@ export const validateComponentConfig = (component: any): { valid: boolean; error
  */
 export const cloneComponent = (component: any): any => {
     return JSON.parse(JSON.stringify(component));
+};
+
+/**
+ * 检查组件是否满足显隐联动条件
+ */
+export const checkCondition = (condition: { field: string; value: any } | undefined, formData: Record<string, any>): boolean => {
+    if (!condition || !condition.field) return true;
+    const actualValue = formData[condition.field];
+    // 简单比对（统一转字符串避免类型问题）
+    return String(actualValue) === String(condition.value);
 };
