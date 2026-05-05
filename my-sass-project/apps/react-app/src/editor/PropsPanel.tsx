@@ -1,50 +1,98 @@
-import { useMemo } from 'react';
-import { useDesignerStore } from '../store/designerStore';
+import { useMemo } from "react";
+import { useDesignerStore } from "../store/designerStore";
+import OptionsEditor from "./OptionsEditor";
 
 export default function PropsPanel() {
-  const { nodes, selectedId, updateNode } = useDesignerStore();
+  const { selectedId, updateNode, getSelectedNode, removeNode } =
+    useDesignerStore();
+  const node = getSelectedNode();
 
-  const current = useMemo(() => {
-    const walk = (list: any[]): any | null => {
-      for (const n of list) {
-        if (n.id === selectedId) return n;
-        if (n.children?.length) {
-          const f = walk(n.children);
-          if (f) return f;
-        }
-      }
-      return null;
-    };
-    return walk(nodes);
-  }, [nodes, selectedId]);
+  const fields = useMemo(() => {
+    if (!node) return [];
+    switch (node.type) {
+      case "input":
+        return ["label", "modelKey", "placeholder"];
+      case "select":
+        return ["label", "modelKey", "options"];
+      case "group":
+        return ["label"];
+      default:
+        return ["label"];
+    }
+  }, [node]);
 
-  if (!current) return <div>请选择一个节点</div>;
+  if (!selectedId || !node) return <div>请选择一个节点</div>;
 
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div style={{ display: "grid", gap: 12 }}>
       <h3>属性面板</h3>
 
-      <label>
-        标题
-        <input
-          value={current.label || ''}
-          onChange={(e) => updateNode(current.id, { label: e.target.value })}
-          style={{ width: '100%', marginTop: 4 }}
-        />
-      </label>
+      {fields.includes("label") && (
+        <label>
+          标题
+          <input
+            value={node.label || ""}
+            onChange={(e) => updateNode(node.id, { label: e.target.value })}
+            style={{ width: "100%", marginTop: 4 }}
+          />
+        </label>
+      )}
 
-      <label>
-        Placeholder
-        <input
-          value={current.props?.placeholder || ''}
-          onChange={(e) =>
-            updateNode(current.id, {
-              props: { placeholder: e.target.value }
-            } as any)
-          }
-          style={{ width: '100%', marginTop: 4 }}
-        />
-      </label>
+      {fields.includes("modelKey") && (
+        <label>
+          modelKey
+          <input
+            value={node.props?.modelKey || ""}
+            onChange={(e) =>
+              updateNode(node.id, {
+                props: { ...node.props, modelKey: e.target.value },
+              })
+            }
+            style={{ width: "100%", marginTop: 4 }}
+          />
+        </label>
+      )}
+
+      {fields.includes("placeholder") && (
+        <label>
+          placeholder
+          <input
+            value={node.props?.placeholder || ""}
+            onChange={(e) =>
+              updateNode(node.id, {
+                props: { ...node.props, placeholder: e.target.value },
+              })
+            }
+            style={{ width: "100%", marginTop: 4 }}
+          />
+        </label>
+      )}
+
+      {fields.includes("options") && (
+        <div>
+          <div style={{ marginBottom: 6 }}>选项配置</div>
+          <OptionsEditor
+            value={node.props?.options || []}
+            onChange={(nextOptions) =>
+              updateNode(node.id, {
+                props: { ...node.props, options: nextOptions },
+              })
+            }
+          />
+        </div>
+      )}
+
+      <button
+        onClick={() => removeNode(node.id)}
+        style={{
+          background: "#ff4d4f",
+          color: "#fff",
+          border: 0,
+          padding: "8px 10px",
+        }}
+      >
+        删除节点
+      </button>
     </div>
   );
 }
