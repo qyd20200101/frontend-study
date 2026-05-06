@@ -1,12 +1,13 @@
 import { useDesignerStore } from '../store/useDesignerStore';
+import type { BaseNode } from '@my-sass/core';
 
 export default function SettingsPanel() {
-  const selectedNodeId = useDesignerStore((state) => state.selectedNodeId);
-  const schema = useDesignerStore((state) => state.schema);
+  const selectedId = useDesignerStore((state) => state.selectedId);
+  const nodes = useDesignerStore((state) => state.nodes);
   const updateNode = useDesignerStore((state) => state.updateNode);
 
   // 递归查找选中的节点
-  const findNode = (nodes: any[], id: string): any => {
+  const findNode = (nodes: BaseNode[], id: string): BaseNode | null => {
     for (const node of nodes) {
       if (node.id === id) return node;
       if (node.children) {
@@ -17,7 +18,7 @@ export default function SettingsPanel() {
     return null;
   };
 
-  const selectedNode = selectedNodeId ? findNode(schema, selectedNodeId) : null;
+  const selectedNode = selectedId ? findNode(nodes, selectedId) : null;
 
   if (!selectedNode) {
     return (

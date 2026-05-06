@@ -10,25 +10,63 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  arrayMove,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { BaseNode } from "@my-sass/core";
 import FormRenderer from "../renderer/FormRenderer";
-import { useDesignerStore } from "../store/designerStore";
+import {
+  useDesignerStore,
+  ROOT_CONTAINER_ID,
+  groupContainerId,
+} from "../store/designerStore";
 
-const ROOT_CONTAINER_ID = "__ROOT__";
-const groupContainerId = (groupId: string) => `group:${groupId}`;
+function RootDropZone() {
+  const { setNodeRef, isOver } = useDroppable({ id: ROOT_CONTAINER_ID });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        border: isOver ? "2px dashed #1677ff" : "1px dashed #999",
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 12,
+        background: isOver ? "rgba(22,119,255,0.08)" : "transparent",
+        fontSize: 12,
+      }}
+    >
+      {isOver ? "松开：移动到顶层" : "拖到这里：移动到顶层"}
+    </div>
+  );
+}
 
-type SortableItemProps = {
-  node: BaseNode;
-  containerId: string;
-  selected: boolean;
-  onSelect: (id: string) => void;
+function GroupDropZone({
+  groupId,
+  children,
+}: {
+  groupId: string;
   children: React.ReactNode;
-};
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: groupId });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        border: isOver ? "2px dashed #52c41a" : "1px dashed #888",
+        borderRadius: 8,
+        padding: 8,
+        marginTop: 6,
+        background: isOver ? "rgba(82,196,26,0.08)" : "transparent",
+      }}
+    >
+      <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+        {isOver ? "松开以放入该分组" : "可拖入该分组"}
+      </div>
+      {children}
+    </div>
+  );
+}
 
 function SortableItem({
   node,
@@ -36,7 +74,13 @@ function SortableItem({
   selected,
   onSelect,
   children,
-}: SortableItemProps) {
+}: {
+  node: BaseNode;
+  containerId: string;
+  selected: boolean;
+  onSelect: (id: string) => void;
+  children: React.ReactNode;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
       id: node.id,
@@ -74,53 +118,21 @@ function SortableItem({
   );
 }
 
-function GroupDropZone({
-  groupId,
-  children,
-}: {
-  groupId: string;
-  children: React.ReactNode;
-}) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: groupId, // 注意：仍用节点 id，便于“拖入 group”逻辑
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        border: isOver ? "2px dashed #52c41a" : "1px dashed #888",
-        borderRadius: 8,
-        padding: 8,
-        marginTop: 6,
-        background: isOver ? "rgba(82,196,26,0.08)" : "transparent",
-      }}
-    >
-      <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
-        {isOver ? "松开以放入该分组" : "可拖入该分组"}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-type GroupChildrenProps = {
-  groupNode: BaseNode;
-  selectedId: string | null;
-  setSelectedId: (id: string) => void;
-};
-
 function GroupChildren({
   groupNode,
   selectedId,
   setSelectedId,
-}: GroupChildrenProps) {
+}: {
+  groupNode: BaseNode;
+  selectedId: string | null;
+  setSelectedId: (id: string) => void;
+}) {
   const children = groupNode.children ?? [];
   const containerId = groupContainerId(groupNode.id);
 
   return (
     <SortableContext
-      items={children.map((n) => n.id)}
+      items={children.map((c) => c.id)}
       strategy={verticalListSortingStrategy}
     >
       {children.length === 0 ? (
@@ -147,10 +159,10 @@ export default function Canvas() {
     nodes,
     selectedId,
     setSelectedId,
-    setNodes,
     findNodeById,
-    moveNodeToGroup,
-    reorderInContainer, // 需要你在 store 里实现（之前已给）
+    reorderInContainer,
+    moveBetweenContainers,
+    moveBetweenContainers: moveNode, // 别名仅为可读性
   } = useDesignerStore();
 
   const sensors = useSensors(useSensor(PointerSensor));
@@ -162,43 +174,52 @@ export default function Canvas() {
     const fromContainerId = active.data.current?.containerId as
       | string
       | undefined;
-    const toContainerId = over.data.current?.containerId as string | undefined;
 
-    // A. 同容器排序（顶层 / 同group）
-    if (fromContainerId && toContainerId && fromContainerId === toContainerId) {
-      const list =
-        fromContainerId === ROOT_CONTAINER_ID
-          ? nodes
-          : (findNodeById(fromContainerId.replace("group:", ""))?.children ??
-            []);
-
-      const oldIndex = list.findIndex((n) => n.id === active.id);
-      const newIndex = list.findIndex((n) => n.id === over.id);
-
-      if (oldIndex >= 0 && newIndex >= 0) {
-        // 用 store 方法（推荐）
-        if (reorderInContainer) {
-          reorderInContainer(fromContainerId, oldIndex, newIndex);
-        } else if (fromContainerId === ROOT_CONTAINER_ID) {
-          // 兜底：顶层直接 setNodes
-          setNodes(arrayMove(nodes, oldIndex, newIndex));
-        }
+    // 1) 目标是 root 回收区
+    if (String(over.id) === ROOT_CONTAINER_ID) {
+      if (fromContainerId) {
+        moveNode(fromContainerId, ROOT_CONTAINER_ID, String(active.id));
       }
       return;
     }
 
-    // B. 拖入 group（跨容器先做 append）
+    // 2) 目标是 group 节点壳（droppable id = groupId）
     const overNode = findNodeById(String(over.id));
     if (overNode?.type === "group") {
-      moveNodeToGroup(String(active.id), overNode.id);
+      if (fromContainerId) {
+        moveNode(
+          fromContainerId,
+          groupContainerId(overNode.id),
+          String(active.id),
+        );
+      }
       return;
     }
 
-    // C. 顶层兜底排序（旧逻辑保留）
-    const oldIndex = nodes.findIndex((n) => n.id === active.id);
-    const newIndex = nodes.findIndex((n) => n.id === over.id);
-    if (oldIndex >= 0 && newIndex >= 0) {
-      setNodes(arrayMove(nodes, oldIndex, newIndex));
+    // 3) over 在 sortable item 上（可能是 root 容器、也可能是 group 容器）
+    const toContainerId = over.data.current?.containerId as string | undefined;
+    if (!fromContainerId || !toContainerId) return;
+
+    if (fromContainerId === toContainerId) {
+      // 同容器排序
+      const list =
+        toContainerId === ROOT_CONTAINER_ID
+          ? nodes
+          : (findNodeById(toContainerId.replace("group:", ""))?.children ?? []);
+
+      const oldIndex = list.findIndex((n) => n.id === active.id);
+      const newIndex = list.findIndex((n) => n.id === over.id);
+      if (oldIndex >= 0 && newIndex >= 0) {
+        reorderInContainer(toContainerId, oldIndex, newIndex);
+      }
+    } else {
+      // 跨容器移动（按 overId 插入）
+      moveBetweenContainers(
+        fromContainerId,
+        toContainerId,
+        String(active.id),
+        String(over.id),
+      );
     }
   };
 
@@ -208,7 +229,8 @@ export default function Canvas() {
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
-      {/* 顶层容器 */}
+      <RootDropZone />
+
       <SortableContext
         items={nodes.map((n) => n.id)}
         strategy={verticalListSortingStrategy}
@@ -223,13 +245,11 @@ export default function Canvas() {
           >
             {node.type === "group" ? (
               <GroupDropZone groupId={node.id}>
-                {/* group 自身展示 */}
                 <FormRenderer
                   nodes={[{ ...node, children: [] }]}
                   value={{}}
                   onChange={() => {}}
                 />
-                {/* group children 可排序区域 */}
                 <div style={{ marginTop: 8 }}>
                   <GroupChildren
                     groupNode={node}

@@ -12,7 +12,7 @@ interface DesignerState {
   reset: () => void;
 }
 
-export const useDesignerStore = create<DesignerState>((set, get) => ({
+export const useDesignerStore = create<DesignerState>((set) => ({
   nodes: [],
   selectedId: null,
 

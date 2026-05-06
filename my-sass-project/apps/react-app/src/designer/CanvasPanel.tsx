@@ -1,6 +1,6 @@
 import { useDesignerStore } from '../store/useDesignerStore';
 import FormRenderer from '../renderer/FormRenderer';
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { BaseNode } from '@my-sass/core';
@@ -8,8 +8,8 @@ import type { BaseNode } from '@my-sass/core';
 // 拖拽和选中的包装器
 function SortableNodeWrapper({ node, children }: { node: BaseNode, children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: node.id });
-  const selectedNodeId = useDesignerStore((state) => state.selectedNodeId);
-  const selectNode = useDesignerStore((state) => state.selectNode);
+  const selectedNodeId = useDesignerStore((state) => state.selectedId);
+  const selectNode = useDesignerStore((state) => state.setSelectedId);
 
   const isSelected = selectedNodeId === node.id;
 
@@ -41,9 +41,9 @@ function SortableNodeWrapper({ node, children }: { node: BaseNode, children: Rea
 }
 
 export default function CanvasPanel() {
-  const schema = useDesignerStore((state) => state.schema);
+  const nodes = useDesignerStore((state) => state.nodes);
   const reorderNodes = useDesignerStore((state) => state.reorderNodes);
-  const selectNode = useDesignerStore((state) => state.selectNode);
+  const selectNode = useDesignerStore((state) => state.setSelectedId);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -51,11 +51,11 @@ export default function CanvasPanel() {
     })
   );
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (active.id !== over?.id) {
-      const oldIndex = schema.findIndex((n) => n.id === active.id);
-      const newIndex = schema.findIndex((n) => n.id === over.id);
+    if (over && active.id !== over.id) {
+      const oldIndex = nodes.findIndex((n) => n.id === active.id);
+      const newIndex = nodes.findIndex((n) => n.id === over.id);
       reorderNodes(oldIndex, newIndex);
     }
   };
@@ -66,15 +66,15 @@ export default function CanvasPanel() {
       onClick={() => selectNode(null)} // 点击空白处取消选中
     >
       <div style={{ backgroundColor: '#fff', minHeight: 600, padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-        {schema.length === 0 ? (
+        {nodes.length === 0 ? (
           <div style={{ textAlign: 'center', color: '#999', marginTop: 100 }}>
             请从左侧点击添加组件
           </div>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={schema.map(n => n.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={nodes.map((n: BaseNode) => n.id)} strategy={verticalListSortingStrategy}>
               <FormRenderer
-                nodes={schema}
+                nodes={nodes}
                 value={{}}
                 onChange={() => {}}
                 nodeWrapper={(node, element) => (
@@ -90,7 +90,7 @@ export default function CanvasPanel() {
       
       <div style={{ marginTop: 24, padding: 16, backgroundColor: '#333', color: '#fff', borderRadius: 8 }}>
         <h4>当前 Schema 数据 (只读)</h4>
-        <pre style={{ fontSize: 12 }}>{JSON.stringify(schema, null, 2)}</pre>
+        <pre style={{ fontSize: 12 }}>{JSON.stringify(nodes, null, 2)}</pre>
       </div>
     </div>
   );

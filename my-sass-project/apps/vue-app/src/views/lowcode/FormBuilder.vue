@@ -9,7 +9,7 @@ import { ElMessage } from 'element-plus';
 import type { FormComponent, FormSchema } from '../../types/lowcode';
 //引入接口
 import { saveFormSchemeApi, getFormSchemaApi } from "../../api/form";
-import { getElComponent } from "../../utils/lowcode";
+// import { getElComponent } from "../../utils/lowcode";
 import ComponentConfig from '../../components/ComponentConfig.vue';
 import BuilderNode from '../../components/BuilderNode.vue';
 import { SimpleASTGenerator } from "../../utils/simpleAstGenerator";

@@ -4,8 +4,8 @@ import { componentMap } from './componentMap';
 
 interface Props {
     nodes: BaseNode[];
-    value: Record<string, any>;
-    onChange: (key: string, val: any) => void;
+    value: Record<string, unknown>;
+    onChange: (key: string, val: unknown) => void;
     nodeWrapper?: (node: BaseNode, element: React.ReactNode) => React.ReactNode;
 }
 
@@ -41,8 +41,8 @@ export default function FormRenderer(props: Props) {
                 label={node.label}
                 placeholder={node.props?.placeholder}
                 options={node.props?.options}
-                value={modelKey ? props.value[modelKey] : undefined}
-                onChange={(val: any) => {
+                value={modelKey ? (props.value[modelKey] as string | undefined) : undefined}
+                onChange={(val: unknown) => {
                     if (!modelKey) return;
                     props.onChange(modelKey, val);
                 }}

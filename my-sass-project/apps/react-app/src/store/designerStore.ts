@@ -1,240 +1,196 @@
+// apps/react-app/src/store/designerStore.ts
 import { create } from "zustand";
 import type { BaseNode } from "@my-sass/core";
+import {
+  normalizeSchema,
+  SCHEMA_TYPE,
+  CURRENT_SCHEMA_VERSION,
+} from "./schemaMigrations";
+
+export const ROOT_CONTAINER_ID = "__ROOT__";
+export const groupContainerId = (groupId: string) => `group:${groupId}`;
+export const parseGroupId = (containerId: string) =>
+  containerId.startsWith("group:") ? containerId.replace("group:", "") : null;
+
+const LOCAL_KEY = "my_sass_designer_schema_v1";
+
+type ImportResult = { ok: true } | { ok: false; error: string };
 
 interface DesignerState {
   nodes: BaseNode[];
   selectedId: string | null;
+  previewVersion: number;
 
   setNodes: (nodes: BaseNode[]) => void;
-  addNode: (node: BaseNode, parentId?: string | null) => void;
-  isGroupNode: (id: string | null) => boolean;
-
   setSelectedId: (id: string | null) => void;
   getSelectedNode: () => BaseNode | null;
-  updateNode: (id: string, patch: Partial<BaseNode>) => void;
-  moveNodeToGroup: (nodeId: string, groupId: string) => void;
   findNodeById: (id: string) => BaseNode | null;
-  moveNodeToRoot: (nodeId: string) => void;
-  reorderGroupChildren: (
-    groupId: string,
-    oldIndex: number,
-    newIndex: number,
-  ) => void;
+  updateNode: (id: string, patch: Partial<BaseNode>) => void;
+  addNode: (node: BaseNode, parentId?: string | null) => void;
+  removeNode: (id: string) => void;
+  reset: () => void;
+
   reorderInContainer: (
     containerId: string,
     oldIndex: number,
     newIndex: number,
   ) => void;
-  removeNode: (id: string) => void;
-  reorderNodes: (oldIndex: number, newIndex: number) => void;
-  reset: () => void;
+  moveBetweenContainers: (
+    fromContainerId: string,
+    toContainerId: string,
+    nodeId: string,
+    overId?: string,
+  ) => void;
+
+  markPreviewVersion: () => void;
+
+  // 导入导出
+  setSchema: (nodes: BaseNode[]) => void;
+  exportSchema: () => string;
+  importSchema: (jsonText: string) => ImportResult;
+
+  // 备份回滚
+  backupSchema: () => void;
+  undoImport: () => boolean;
+  hasBackup: boolean;
+  _backupNodes: BaseNode[] | null;
+
+  // 本地持久化
+  saveToLocal: () => void;
+  loadFromLocal: () => ImportResult;
 }
+
+function deepClone<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v));
+}
+
+function findNode(list: BaseNode[], id: string): BaseNode | null {
+  for (const n of list) {
+    if (n.id === id) return n;
+    if (n.children?.length) {
+      const hit = findNode(n.children, id);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+function containsNode(root: BaseNode, targetId: string): boolean {
+  if (root.id === targetId) return true;
+  return !!root.children?.some((c) => containsNode(c, targetId));
+}
+
+function removeNodeFromTree(
+  list: BaseNode[],
+  nodeId: string,
+): [BaseNode[], BaseNode | null] {
+  let removed: BaseNode | null = null;
+
+  const walk = (arr: BaseNode[]): BaseNode[] =>
+    arr
+      .filter((n) => {
+        if (n.id === nodeId) {
+          removed = n;
+          return false;
+        }
+        return true;
+      })
+      .map((n) =>
+        n.children?.length ? { ...n, children: walk(n.children) } : n,
+      );
+
+  return [walk(list), removed];
+}
+
+function insertIntoContainer(
+  tree: BaseNode[],
+  containerId: string,
+  node: BaseNode,
+  overId?: string,
+): BaseNode[] {
+  if (containerId === ROOT_CONTAINER_ID) {
+    const next = [...tree];
+    if (!overId) {
+      next.push(node);
+      return next;
+    }
+    const idx = next.findIndex((n) => n.id === overId);
+    if (idx < 0) next.push(node);
+    else next.splice(idx, 0, node);
+    return next;
+  }
+
+  const gid = parseGroupId(containerId);
+  if (!gid) return tree;
+
+  const walk = (arr: BaseNode[]): BaseNode[] =>
+    arr.map((n) => {
+      if (n.id === gid && n.type === "group") {
+        const children = [...(n.children ?? [])];
+        if (!overId) children.push(node);
+        else {
+          const idx = children.findIndex((c) => c.id === overId);
+          if (idx < 0) children.push(node);
+          else children.splice(idx, 0, node);
+        }
+        return { ...n, children };
+      }
+      if (n.children?.length) return { ...n, children: walk(n.children) };
+      return n;
+    });
+
+  return walk(tree);
+}
+
+function reorderArray<T>(arr: T[], oldIndex: number, newIndex: number): T[] {
+  const next = [...arr];
+  const [moved] = next.splice(oldIndex, 1);
+  next.splice(newIndex, 0, moved);
+  return next;
+}
+
 
 export const useDesignerStore = create<DesignerState>((set, get) => ({
   nodes: [],
   selectedId: null,
+  previewVersion: 0,
 
   setNodes: (nodes) => set({ nodes }),
-
-  addNode: (node, parentId = null) =>
-    set((state) => {
-      if (!parentId) {
-        return { nodes: [...state.nodes, node] };
-      }
-
-      const appendChild = (list: BaseNode[]): BaseNode[] =>
-        list.map((item) => {
-          if (item.id === parentId) {
-            return {
-              ...item,
-              children: [...(item.children ?? []), node],
-            };
-          }
-          if (item.children?.length) {
-            return { ...item, children: appendChild(item.children) };
-          }
-          return item;
-        });
-
-      return { nodes: appendChild(state.nodes) };
-    }),
-  isGroupNode: (id) => {
-    if (!id) return false;
-
-    const find = (list: BaseNode[]): BaseNode | null => {
-      for (const n of list) {
-        if (n.id === id) return n;
-        if (n.children?.length) {
-          const hit = find(n.children);
-          if (hit) return hit;
-        }
-      }
-      return null;
-    };
-
-    const node = find(get().nodes);
-    return node?.type === "group";
-  },
-
   setSelectedId: (id) => set({ selectedId: id }),
 
   getSelectedNode: () => {
-    const find = (list: BaseNode[], id: string | null): BaseNode | null => {
-      if (!id) return null;
-      for (const n of list) {
-        if (n.id === id) return n;
-        if (n.children?.length) {
-          const hit = find(n.children, id);
-          if (hit) return hit;
-        }
-      }
-      return null;
-    };
-    return find(get().nodes, get().selectedId);
-  },
-  findNodeById: (id) => {
-    const walk = (list: BaseNode[]): BaseNode | null => {
-      for (const n of list) {
-        if (n.id === id) return n;
-        if (n.children?.length) {
-          const hit = walk(n.children);
-          if (hit) return hit;
-        }
-      }
-      return null;
-    };
-    return walk(get().nodes);
+    const { nodes, selectedId } = get();
+    if (!selectedId) return null;
+    return findNode(nodes, selectedId);
   },
 
-  moveNodeToGroup: (nodeId, groupId) =>
-    set((state) => {
-      let movingNode: BaseNode | null = null;
-
-      // 1) 从整棵树中移除 nodeId，并拿到该节点
-      const removeNode = (list: BaseNode[]): BaseNode[] =>
-        list
-          .filter((n) => {
-            if (n.id === nodeId) {
-              movingNode = n;
-              return false;
-            }
-            return true;
-          })
-          .map((n) =>
-            n.children?.length ? { ...n, children: removeNode(n.children) } : n,
-          );
-
-      const removed = removeNode(state.nodes);
-      if (!movingNode) return { nodes: state.nodes };
-
-      // 防止拖到自己或自己的子树里（简单保护）
-      const contains = (root: BaseNode, targetId: string): boolean => {
-        if (root.id === targetId) return true;
-        return !!root.children?.some((c) => contains(c, targetId));
-      };
-      if (contains(movingNode, groupId)) {
-        return { nodes: state.nodes };
-      }
-
-      // 2) 插入到 group.children
-      const insertIntoGroup = (list: BaseNode[]): BaseNode[] =>
-        list.map((n) => {
-          if (n.id === groupId && n.type === "group") {
-            return { ...n, children: [...(n.children ?? []), movingNode!] };
-          }
-          if (n.children?.length) {
-            return { ...n, children: insertIntoGroup(n.children) };
-          }
-          return n;
-        });
-
-      return { nodes: insertIntoGroup(removed) };
-    }),
-  moveNodeToRoot: (nodeId) =>
-    set((state) => {
-      let movingNode: BaseNode | null = null;
-
-      const removeRecursive = (list: BaseNode[]): BaseNode[] =>
-        list
-          .filter((n) => {
-            if (n.id === nodeId) {
-              movingNode = n;
-              return false;
-            }
-            return true;
-          })
-          .map((n) =>
-            n.children?.length
-              ? { ...n, children: removeRecursive(n.children) }
-              : n,
-          );
-
-      const nextTree = removeRecursive(state.nodes);
-      if (!movingNode) return { nodes: state.nodes };
-
-      return { nodes: [...nextTree, movingNode] };
-    }),
-
-  reorderGroupChildren: (groupId, oldIndex, newIndex) =>
-    set((state) => {
-      const reorder = (arr: BaseNode[]) => {
-        const copy = [...arr];
-        const [moved] = copy.splice(oldIndex, 1);
-        copy.splice(newIndex, 0, moved);
-        return copy;
-      };
-
-      const walk = (list: BaseNode[]): BaseNode[] =>
-        list.map((n) => {
-          if (n.id === groupId && n.type === "group") {
-            return { ...n, children: reorder(n.children ?? []) };
-          }
-          if (n.children?.length) {
-            return { ...n, children: walk(n.children) };
-          }
-          return n;
-        });
-
-      return { nodes: walk(state.nodes) };
-    }),
+  findNodeById: (id) => findNode(get().nodes, id),
 
   updateNode: (id, patch) =>
     set((state) => {
-      const updateRecursive = (list: BaseNode[]): BaseNode[] =>
-        list.map((node) => {
-          if (node.id === id) {
+      const walk = (arr: BaseNode[]): BaseNode[] =>
+        arr.map((n) => {
+          if (n.id === id) {
             return {
-              ...node,
+              ...n,
               ...patch,
-              props: { ...node.props, ...patch.props },
+              props: { ...n.props, ...patch.props },
             };
           }
-          if (node.children?.length) {
-            return { ...node, children: updateRecursive(node.children) };
-          }
-          return node;
+          if (n.children?.length) return { ...n, children: walk(n.children) };
+          return n;
         });
-
-      return { nodes: updateRecursive(state.nodes) };
+      return { nodes: walk(state.nodes) };
     }),
-  reorderInContainer: (containerId, oldIndex, newIndex) =>
+
+  addNode: (node, parentId = null) =>
     set((state) => {
-      const reorder = (arr: BaseNode[]) => {
-        const next = [...arr];
-        const [moved] = next.splice(oldIndex, 1);
-        next.splice(newIndex, 0, moved);
-        return next;
-      };
+      if (!parentId) return { nodes: [...state.nodes, node] };
 
-      if (containerId === "__ROOT__") {
-        return { nodes: reorder(state.nodes) };
-      }
-
-      const groupId = containerId.replace("group:", "");
-      const walk = (list: BaseNode[]): BaseNode[] =>
-        list.map((n) => {
-          if (n.id === groupId && n.type === "group") {
-            return { ...n, children: reorder(n.children ?? []) };
+      const walk = (arr: BaseNode[]): BaseNode[] =>
+        arr.map((n) => {
+          if (n.id === parentId && n.type === "group") {
+            return { ...n, children: [...(n.children ?? []), node] };
           }
           if (n.children?.length) return { ...n, children: walk(n.children) };
           return n;
@@ -245,29 +201,143 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   removeNode: (id) =>
     set((state) => {
-      const removeRecursive = (list: BaseNode[]): BaseNode[] =>
-        list
-          .filter((n) => n.id !== id)
-          .map((n) =>
-            n.children?.length
-              ? { ...n, children: removeRecursive(n.children) } // 注意是 children
-              : n,
-          );
-
-      const next = removeRecursive(state.nodes);
+      const [next] = removeNodeFromTree(state.nodes, id);
       return {
         nodes: next,
         selectedId: state.selectedId === id ? null : state.selectedId,
       };
     }),
 
-  reorderNodes: (oldIndex, newIndex) =>
+  reorderInContainer: (containerId, oldIndex, newIndex) =>
     set((state) => {
-      const arr = [...state.nodes];
-      const [moved] = arr.splice(oldIndex, 1);
-      arr.splice(newIndex, 0, moved);
-      return { nodes: arr };
+      if (oldIndex === newIndex || oldIndex < 0 || newIndex < 0) {
+        return { nodes: state.nodes };
+      }
+
+      if (containerId === ROOT_CONTAINER_ID) {
+        return { nodes: reorderArray(state.nodes, oldIndex, newIndex) };
+      }
+
+      const gid = parseGroupId(containerId);
+      if (!gid) return { nodes: state.nodes };
+
+      const walk = (arr: BaseNode[]): BaseNode[] =>
+        arr.map((n) => {
+          if (n.id === gid && n.type === "group") {
+            return {
+              ...n,
+              children: reorderArray(n.children ?? [], oldIndex, newIndex),
+            };
+          }
+          if (n.children?.length) return { ...n, children: walk(n.children) };
+          return n;
+        });
+
+      return { nodes: walk(state.nodes) };
     }),
+
+  moveBetweenContainers: (fromContainerId, toContainerId, nodeId, overId) =>
+    set((state) => {
+      const [treeWithoutNode, movingNode] = removeNodeFromTree(
+        state.nodes,
+        nodeId,
+      );
+      if (!movingNode) return { nodes: state.nodes };
+
+      const toGroupId = parseGroupId(toContainerId);
+      if (toGroupId && containsNode(movingNode, toGroupId)) {
+        // 防止拖入自身/子树
+        return { nodes: state.nodes };
+      }
+
+      const nextTree = insertIntoContainer(
+        treeWithoutNode,
+        toContainerId,
+        movingNode,
+        overId,
+      );
+      return { nodes: nextTree };
+    }),
+
+  markPreviewVersion: () =>
+    set((s) => ({ previewVersion: s.previewVersion + 1 })),
+
+  setSchema: (nodes) => set({ nodes, selectedId: null }),
+
+  exportSchema: () => {
+    const { nodes } = get();
+    const payload = {
+      version: CURRENT_SCHEMA_VERSION,
+      type: SCHEMA_TYPE,
+      meta: {
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        source: "designer",
+      },
+      nodes,
+    };
+    return JSON.stringify(payload, null, 2);
+  },
+
+  importSchema: (jsonText) => {
+    try {
+      const parsed = JSON.parse(jsonText);
+      const normalized = normalizeSchema(parsed);
+      if (!normalized.ok) return { ok: false, error: normalized.error };
+
+      const nodes = normalized.data.nodes;
+      // 如果你有 validateNodes，可继续保留
+      set({
+        nodes: JSON.parse(JSON.stringify(nodes)),
+        selectedId: null,
+      });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: `JSON 解析失败: ${e instanceof Error ? e.message : "未知错误"}` };
+    }
+  },
+
+  backupSchema: () => {
+    const nodes = get().nodes;
+    set({
+      _backupNodes: deepClone(nodes),
+      hasBackup: true,
+    });
+  },
+
+  undoImport: () => {
+    const { _backupNodes, hasBackup } = get();
+    if (!hasBackup || !_backupNodes) return false;
+    set({
+      nodes: deepClone(_backupNodes),
+      selectedId: null,
+      hasBackup: false,
+      _backupNodes: null,
+    });
+    return true;
+  },
+
+  hasBackup: false,
+  _backupNodes: null,
+
+  saveToLocal: () => {
+    try {
+      const payload = get().exportSchema();
+      localStorage.setItem(LOCAL_KEY, payload);
+    } catch {
+      // ignore
+    }
+  },
+
+  loadFromLocal: () => {
+    try {
+      const text = localStorage.getItem(LOCAL_KEY);
+      if (!text) return { ok: true };
+      return get().importSchema(text);
+    } catch (e) {
+      return { ok: false, error: `本地加载失败: ${e instanceof Error ? e.message : "未知错误"}` };
+    }
+  },
 
   reset: () => set({ nodes: [], selectedId: null }),
 }));

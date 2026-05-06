@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+// apps/react-app/src/pages/DesignerPage.tsx
+import { useEffect, useMemo, useState } from "react";
 import { useDesignerStore } from "../store/designerStore";
 import Canvas from "../editor/Canvas";
 import PropsPanel from "../editor/PropsPanel";
+import SchemaIOPanel from "../editor/SchemaIOPanel";
 import {
   createInputNode,
   createSelectNode,
@@ -9,10 +11,30 @@ import {
 } from "../editor/nodeFactory";
 
 export default function DesignerPage() {
-  const { addNode, selectedId, getSelectedNode } = useDesignerStore();
+  const {
+    addNode,
+    selectedId,
+    getSelectedNode,
+    loadFromLocal,
+    saveToLocal,
+    nodes,
+  } = useDesignerStore();
 
-  // 用户可切换：true=始终顶层，false=智能(选中group就加到group)
   const [forceTopLevel, setForceTopLevel] = useState(false);
+
+  // 首次加载：恢复本地草稿
+  useEffect(() => {
+    loadFromLocal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 自动保存（简单 debounce）
+  useEffect(() => {
+    const t = setTimeout(() => {
+      saveToLocal();
+    }, 500);
+    return () => clearTimeout(t);
+  }, [nodes, saveToLocal]);
 
   const selectedNode = getSelectedNode();
 
@@ -21,29 +43,23 @@ export default function DesignerPage() {
       return {
         parentId: null as string | null,
         text: "将添加到：顶层（手动指定）",
-        isGroup: false,
       };
     }
-
     if (selectedNode?.type === "group") {
       return {
         parentId: selectedNode.id,
         text: `将添加到：分组「${selectedNode.label || selectedNode.id}」`,
-        isGroup: true,
       };
     }
-
     return {
       parentId: null as string | null,
       text: selectedId
         ? `当前选中非分组节点（${selectedNode?.type}），将添加到：顶层`
         : "当前未选中节点，将添加到：顶层",
-      isGroup: false,
     };
   }, [forceTopLevel, selectedId, selectedNode]);
 
   const handleAdd = (type: "input" | "select" | "group") => {
-    const parentId = targetInfo.parentId;
     const node =
       type === "input"
         ? createInputNode()
@@ -51,7 +67,7 @@ export default function DesignerPage() {
           ? createSelectNode()
           : createGroupNode();
 
-    addNode(node, parentId);
+    addNode(node, targetInfo.parentId);
   };
 
   return (
@@ -62,7 +78,9 @@ export default function DesignerPage() {
         height: "100vh",
       }}
     >
-      <aside style={{ borderRight: "1px solid #ddd", padding: 16 }}>
+      <aside
+        style={{ borderRight: "1px solid #ddd", padding: 16, overflow: "auto" }}
+      >
         <h3 style={{ marginTop: 0 }}>物料区</h3>
 
         <div
@@ -102,13 +120,17 @@ export default function DesignerPage() {
           <button onClick={() => handleAdd("select")}>+ 下拉框</button>
           <button onClick={() => handleAdd("group")}>+ 分组</button>
         </div>
+
+        <SchemaIOPanel />
       </aside>
 
       <main style={{ padding: 16, overflow: "auto" }}>
         <Canvas />
       </main>
 
-      <aside style={{ borderLeft: "1px solid #ddd", padding: 16 }}>
+      <aside
+        style={{ borderLeft: "1px solid #ddd", padding: 16, overflow: "auto" }}
+      >
         <PropsPanel />
       </aside>
     </div>
