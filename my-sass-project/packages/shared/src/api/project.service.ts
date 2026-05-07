@@ -1,4 +1,4 @@
-import { request } from "../api/request";
+import request from "../api/request";
 
 export interface PageParams {
     page: number;
@@ -14,7 +14,7 @@ export interface PageResult<T> {
 }
 
 export const getProjectsApi = (params: PageParams) =>
-    request.get<PageResult<any>>("/projects/page", { params });
+    request.get<any, PageResult<any>>("/projects/page", { params });
 
 export const updateProjectApi = (data: Partial<any>) =>
     request({
@@ -30,4 +30,4 @@ export const batchDeleteProjectApi = (ids: number[]) =>
         data: { ids },
     });
 
-export const getDepartmentsApi = () => request.get<any[]>("/departments");
+export const getDepartmentsApi = () => request.get<any, any[]>("/departments");

@@ -1,4 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-export default function SelectField(props) {
-    return (_jsxs("div", { style: { marginBottom: 16 }, children: [props.label && _jsx("label", { style: { display: 'block', marginBottom: 4 }, children: props.label }), _jsxs("select", { style: { padding: '8px 12px', width: '100%' }, value: props.value || '', onChange: (e) => props.onChange?.(e.target.value), children: [_jsx("option", { value: "", children: "\u8BF7\u9009\u62E9" }), props.options?.map((option) => (_jsx("option", { value: option.value, children: option.label }, option.value)))] })] }));
-}
