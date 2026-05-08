@@ -6,16 +6,29 @@ const request = axios.create({
 });
 
 request.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const authStorage = localStorage.getItem('auth-storage');
+  if (authStorage) {
+    try {
+      const { state } = JSON.parse(authStorage);
+      if (state.token) {
+        config.headers.Authorization = `Bearer ${state.token}`;
+      }
+    } catch (e) {
+      console.error('Failed to parse auth-storage', e);
+    }
   }
   return config;
 });
 
 request.interceptors.response.use(
   (res) => res.data,
-  (error) => Promise.reject(error)
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('auth-storage');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
 );
 
 export default request;

@@ -19,11 +19,14 @@ import {
   getDepartmentsApi,
   type PageParams,
 } from "@my-sass/shared";
+import { Button, Space, Typography } from "antd";
 import AssetChart from "../components/AssetChart";
 import TreeItem from "../components/TreeItem";
 import VirtualTable from "../components/VirtualTable";
-import BaseModal from "../components/BaseModal"; // 路径按你实际调
+import BaseModal from "../components/BaseModal";
 import { updateProjectApi } from "@my-sass/shared";
+
+const { Title } = Typography;
 
 type SortOrder = "asc" | "desc" | null;
 
@@ -229,261 +232,247 @@ export default function DataManagerPage() {
   };
 
   return (
-    <>
-      <div style={{ padding: 16 }}>
-        <h2>资产管理面板（React 迁移版）</h2>
+    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Title level={2} style={{ margin: 0 }}>资产管理控制台</Title>
+        <Space>
+          <Button 
+            type="primary" 
+            icon={<span>+</span>} 
+            onClick={() => openEdit()}
+            style={{ height: 40, borderRadius: 8, fontWeight: 600 }}
+          >
+            新增资产
+          </Button>
+          <Button onClick={onExport} style={{ height: 40, borderRadius: 8 }}>导出 CSV</Button>
+        </Space>
+      </div>
 
-        {/* 筛选区 */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <input
-            placeholder="搜索资产名称"
-            value={searchInput}
-            onChange={(e) => {
+      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 24, alignItems: 'start' }}>
+        {/* 左侧栏：组织架构与统计 */}
+        <div style={{ display: 'grid', gap: 24 }}>
+          <div className="glass-card" style={{ padding: 20 }}>
+            <Title level={5} style={{ marginTop: 0, marginBottom: 16 }}>组织架构</Title>
+            <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+              {treeData.length ? (
+                treeData.map((n) => (
+                  <TreeItem
+                    key={n.id}
+                    node={n as TreeNode}
+                    onNodeClick={(node) => {
+                      setSelectedDeptId(node.id);
+                      setPage(1);
+                    }}
+                  />
+                ))
+              ) : (
+                <div style={{ color: "#999", textAlign: 'center', padding: '20px 0' }}>暂无组织数据</div>
+              )}
+            </div>
+            {selectedDeptId && (
+              <Button 
+                type="link" 
+                size="small" 
+                onClick={() => setSelectedDeptId(null)}
+                style={{ marginTop: 8, padding: 0 }}
+              >
+                清空部门筛选
+              </Button>
+            )}
+          </div>
+
+          <div className="glass-card" style={{ padding: 20 }}>
+            <Title level={5} style={{ marginTop: 0, marginBottom: 16 }}>数据概览</Title>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#666' }}>资产总数</span>
+                <span style={{ fontWeight: 600 }}>{summary.count}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#666' }}>预算总额</span>
+                <span style={{ fontWeight: 600, color: '#1677ff' }}>¥{summary.totalBudget.toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#666' }}>平均预算</span>
+                <span style={{ fontWeight: 600 }}>¥{summary.average.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 右侧主栏：图表与表格 */}
+        <div style={{ display: 'grid', gap: 24 }}>
+          <AssetChart
+            title="资产预算分布（按分类）"
+            data={chartData}
+            onBarClick={(name) => {
+              setSelectedCategory(name);
               setPage(1);
-              setSearchInput(e.target.value);
             }}
           />
-          <button onClick={() => setSelectedCategory("")}>重置分类</button>
-          <button onClick={() => setSelectedDeptId(null)}>重置部门</button>
-          <button onClick={onExport}>导出CSV</button>
-          <button onClick={onBatchDelete} disabled={!selectedIds.size}>
-            批量删除 ({selectedIds.size})
-          </button>
-          <button
-            onClick={() => {
-              setSelectedDeptId(null);
-              setPage(1);
-            }}
-          >
-            清空部门筛选
-          </button>
-          <button
-            onClick={() => openEdit()}
-            style={{ background: "#1677ff", color: "#fff", border: "none", padding: "4px 12px", borderRadius: "4px", cursor: "pointer" }}
-          >
-            + 新增资产
-          </button>
 
-        </div>
-
-        <AssetChart
-          title="资产分布统计"
-          data={chartData}
-          onBarClick={(name) => {
-            setSelectedCategory(name);
-            setPage(1);
-          }}
-        />
-
-        <div style={{ marginBottom: 12, padding: 12, border: "1px solid #ddd" }}>
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>组织架构</div>
-          {treeData.length ? (
-            treeData.map((n) => (
-              <TreeItem
-                key={n.id}
-                node={n as TreeNode}
-                onNodeClick={(node) => {
-                  setSelectedDeptId(node.id);
+          <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <input
+                className="search-input"
+                placeholder="🔍 搜索资产名称..."
+                value={searchInput}
+                onChange={(e) => {
                   setPage(1);
+                  setSearchInput(e.target.value);
+                }}
+                style={{ 
+                  border: '1px solid #ddd', 
+                  borderRadius: 8, 
+                  padding: '8px 12px', 
+                  width: 300,
+                  outline: 'none'
                 }}
               />
-            ))
-          ) : (
-            <div style={{ color: "#999" }}>暂无组织数据</div>
-          )}
-        </div>
-
-
-        {/* 表格 */}
-        {loading ? (
-          <div>加载中...</div>
-        ) : (
-          <div style={{ border: "1px solid #eee", borderRadius: 8, overflow: "hidden" }}>
-            {/* 表头 */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                height: 45,
-                background: "#fafafa",
-                borderBottom: "1px solid #f0f2f5",
-                fontWeight: 600,
-                padding: "0 12px",
-                minWidth: 900,
-              }}
-            >
-              <div style={{ width: 45, textAlign: "center" }}>
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = isIndeterminate;
-                  }}
-                  onChange={(e) => selectAll(e.target.checked)}
-                />
-              </div>
-              <div style={{ flex: 3, minWidth: 180, cursor: "pointer" }} onClick={() => onSort("name")}>
-                资产名称
-              </div>
-              <div style={{ width: 100, textAlign: "center" }}>分类</div>
-              <div style={{ width: 140, textAlign: "right", paddingRight: 12, cursor: "pointer" }} onClick={() => onSort("budget")}>
-                预算
-              </div>
-              <div style={{ width: 120, textAlign: "center" }}>状态</div>
-              <div style={{ width: 170, textAlign: "right", paddingRight: 8 }}>操作</div>
+              <Space>
+                {selectedCategory && (
+                  <Button size="small" onClick={() => setSelectedCategory("")}>清除分类: {selectedCategory}</Button>
+                )}
+                <Button 
+                  danger 
+                  disabled={!selectedIds.size}
+                  onClick={onBatchDelete}
+                >
+                  批量删除 ({selectedIds.size})
+                </Button>
+              </Space>
             </div>
 
-            {/* 虚拟列表 */}
-            <VirtualTable
-              data={finalData}
-              itemHeight={60}
-              viewHeight={420}
-              onRowClick={(row) => openEdit(row)}
-
-              renderRow={(row) => (
+            {/* 表格内容 */}
+            {loading ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#999' }}>加载中...</div>
+            ) : (
+              <div style={{ overflow: "hidden" }}>
+                {/* 表头 */}
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    height: "100%",
-                    borderBottom: "1px solid #f2f6fc",
+                    height: 45,
+                    background: "#fafafa",
+                    borderBottom: "1px solid #f0f2f5",
+                    fontWeight: 600,
                     padding: "0 12px",
-                    background: selectedIds.has(row.id) ? "#ecf5ff" : "#fff",
                     minWidth: 900,
                   }}
                 >
                   <div style={{ width: 45, textAlign: "center" }}>
                     <input
                       type="checkbox"
-                      checked={selectedIds.has(row.id)}
-                      onChange={() => toggleSelection(row.id)}
-                      onClick={(e) => e.stopPropagation()}
+                      checked={isAllSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isIndeterminate;
+                      }}
+                      onChange={(e) => selectAll(e.target.checked)}
                     />
                   </div>
-                  <div style={{ flex: 3, minWidth: 180 }}>{row.name}</div>
-                  <div style={{ width: 100, textAlign: "center" }}>{row.category}</div>
-                  <div style={{ width: 140, textAlign: "right", paddingRight: 12 }}>{row.budget}</div>
-                  <div style={{ width: 120, textAlign: "center" }}>{row.status}</div>
-                  <div style={{ width: 170, textAlign: "right", paddingRight: 8 }}>
-                    {row.status === "active" && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRepairOpen(row.id);
-                        }}
-                      >
-                        报修
-                      </button>
-                    )}
-                    {row.status === "repair" && (
-                      <button onClick={(e) => { e.stopPropagation(); onStatusRecover(row.id); }}>修复</button>
-                    )}
+                  <div style={{ flex: 3, minWidth: 180, cursor: "pointer" }} onClick={() => onSort("name")}>
+                    资产名称
                   </div>
+                  <div style={{ width: 100, textAlign: "center" }}>分类</div>
+                  <div style={{ width: 140, textAlign: "right", paddingRight: 12, cursor: "pointer" }} onClick={() => onSort("budget")}>
+                    预算
+                  </div>
+                  <div style={{ width: 120, textAlign: "center" }}>状态</div>
+                  <div style={{ width: 170, textAlign: "right", paddingRight: 8 }}>操作</div>
                 </div>
-              )}
-            />
-          </div>
 
-        )}
-        <BaseModal
-          open={!!editingItem}
-          title={editingItem?.id ? "资产详情" : "新增资产"}
-          onCancel={handleCancelEdit}
-          onConfirm={handleSaveEdit}
-        >
-          {editingItem && (
-            <div style={{ display: "grid", gap: 12 }}>
-              <label>
-                名称
-                <input
-                  value={editingItem.name}
-                  onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                <VirtualTable
+                  data={finalData}
+                  itemHeight={60}
+                  viewHeight={420}
+                  onRowClick={(row) => openEdit(row)}
+                  renderRow={(row) => (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        height: "100%",
+                        borderBottom: "1px solid #f2f6fc",
+                        padding: "0 12px",
+                        background: selectedIds.has(row.id) ? "#ecf5ff" : "#fff",
+                        minWidth: 900,
+                      }}
+                    >
+                      <div style={{ width: 45, textAlign: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(row.id)}
+                          onChange={() => toggleSelection(row.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      <div style={{ flex: 3, minWidth: 180 }}>{row.name}</div>
+                      <div style={{ width: 100, textAlign: "center" }}>{row.category}</div>
+                      <div style={{ width: 140, textAlign: "right", paddingRight: 12 }}>{row.budget}</div>
+                      <div style={{ width: 120, textAlign: "center" }}>{row.status}</div>
+                      <div style={{ width: 170, textAlign: "right", paddingRight: 8 }}>
+                        {row.status === "active" && (
+                          <button onClick={(e) => { e.stopPropagation(); onRepairOpen(row.id); }}>报修</button>
+                        )}
+                        {row.status === "repair" && (
+                          <button onClick={(e) => { e.stopPropagation(); onStatusRecover(row.id); }}>修复</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 />
-              </label>
-
-              <label>
-                预算
-                <input
-                  type="number"
-                  value={editingItem.budget}
-                  onChange={(e) =>
-                    setEditingItem({ ...editingItem, budget: Number(e.target.value || 0) })
-                  }
-                />
-              </label>
-
-              <label>
-                分类
-                <input
-                  value={editingItem.category}
-                  onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
-                />
-              </label>
-
-              <div style={{ fontSize: 12, color: "#999" }}>
-                {isSaving ? "正在保存..." : isDirty ? "有未保存修改" : "未修改"}
               </div>
-            </div>
-          )}
-        </BaseModal>
-        <BaseModal
-          open={repairVisible}
-          title="资产报修申请"
-          width={500}
-          onCancel={() => setRepairVisible(false)}
-          onConfirm={onRepairConfirm}
-        >
-          <div style={{ display: "grid", gap: 12 }}>
-            <div
-              style={{
-                padding: 10,
-                border: "1px solid #ffe58f",
-                background: "#fffbe6",
-                borderRadius: 6,
-                color: "#ad6800",
-              }}
-            >
-              您正在对该资产发起报修流程，请填写具体故障原因。
-            </div>
+            )}
 
-            <label>
-              故障原因
-              <textarea
-                rows={4}
-                value={repairReason}
-                onChange={(e) => setRepairReason(e.target.value)}
-                placeholder="例如：设备无法开机、屏幕损坏等"
-                style={{ width: "100%" }}
-              />
-            </label>
-          </div>
-        </BaseModal>
+            {/* 分页 */}
+            <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#999' }}>总计 {total} 条数据</span>
+              <Space>
+                <Button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>上一页</Button>
+                <span>第 {page} 页</span>
+                <Button onClick={() => setPage((p) => p + 1)}>下一页</Button>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  style={{ marginLeft: 8, borderRadius: 4, padding: '4px 8px', border: '1px solid #ddd' }}
+                >
+                  <option value={50}>50 / 页</option>
+                  <option value={100}>100 / 页</option>
+                  <option value={500}>500 / 页</option>
+                </select>
+              </Space>
+            </div>
+          </div> {/* 结束 glass-card */}
 
-        {/* 分页（简化版） */}
-        <div
-          style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}
-        >
-          <span>总数: {total}</span>
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            上一页
-          </button>
-          <span>第 {page} 页</span>
-          <button onClick={() => setPage((p) => p + 1)}>下一页</button>
-          <select
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
+          {/* 弹窗逻辑保持在层级外 */}
+          <BaseModal
+            open={!!editingItem}
+            title={editingItem?.id ? "资产详情" : "新增资产"}
+            onCancel={handleCancelEdit}
+            onConfirm={handleSaveEdit}
           >
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-            <option value={500}>500</option>
-          </select>
-        </div>
+            {editingItem && (
+              <div style={{ display: "grid", gap: 12 }}>
+                <label>名称 <input value={editingItem.name} onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })} style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }} /></label>
+                <label>预算 <input type="number" value={editingItem.budget} onChange={(e) => setEditingItem({ ...editingItem, budget: Number(e.target.value || 0) })} style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }} /></label>
+                <label>分类 <input value={editingItem.category} onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })} style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }} /></label>
+              </div>
+            )}
+          </BaseModal>
 
-        <div style={{ marginTop: 12 }}>
-          汇总：共 {summary.count} 项，预算总额 {summary.totalBudget}，均值{" "}
-          {summary.average}
-        </div>
-      </div>
-      </>
+          <BaseModal
+            open={repairVisible}
+            title="资产报修申请"
+            onCancel={() => setRepairVisible(false)}
+            onConfirm={onRepairConfirm}
+          >
+            <div style={{ display: "grid", gap: 12 }}>
+              <textarea rows={4} value={repairReason} onChange={(e) => setRepairReason(e.target.value)} placeholder="请输入报修原因" style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }} />
+            </div>
+          </BaseModal>
+        </div> {/* 结束右侧主栏 */}
+      </div> {/* 结束主网格 */}
+    </div>
   );
 }

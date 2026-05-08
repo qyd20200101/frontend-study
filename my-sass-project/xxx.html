@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>xxx - 前端开发工程师</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=NotoSansSC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #000000;
+            --secondary-color: #333333;
+            --line-color: #e5e5e5;
+            --text-color: #333;
+            --font-main: 'Noto Sans SC', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-main);
+            color: var(--text-color);
+            background: #fff;
+            line-height: 1.5;
+            padding: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+            font-size: 14px;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .header h1 { font-size: 28px; margin-bottom: 10px; letter-spacing: 2px; }
+        .header .contact { display: flex; justify-content: center; gap: 20px; color: #666; font-size: 13px; }
+
+        .section-title {
+            background: #f2f2f2;
+            padding: 5px 10px;
+            font-weight: 700;
+            font-size: 16px;
+            margin: 20px 0 15px 0;
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .intent-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 0 10px;
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            margin-bottom: 5px;
+            padding: 0 10px;
+        }
+        .item-row span:last-child { font-weight: 400; }
+
+        .exp-container { padding: 0 10px; margin-bottom: 20px; }
+        .exp-header { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 10px; }
+        .exp-content { margin-top: 5px; }
+        .exp-content p { font-weight: 700; margin: 10px 0 5px 0; color: #000; }
+        .exp-content ul { padding-left: 20px; list-style-type: disc; }
+        .exp-content li { margin-bottom: 5px; }
+
+        .project-detail { margin-bottom: 25px; padding: 0 10px; }
+        .project-title-row { display: flex; justify-content: space-between; font-weight: 700; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 10px; }
+        .project-sub-title { font-weight: 700; margin-top: 10px; color: #111; }
+        .project-text { margin-bottom: 8px; color: #444; }
+        
+        .label { font-weight: 700; color: #000; }
+        
+        .self-eval { padding: 0 10px; line-height: 1.8; }
+
+        @media print {
+            body { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>xxx</h1>
+        <div class="contact">
+            <span><i class="fas fa-phone"></i> 19294221944</span>
+            <span><i class="fas fa-envelope"></i> q1326255779@163.com</span>
+            <span><i class="fab fa-github"></i> github.com/qyd20200101</span>
+            <span><i class="fas fa-location-dot"></i> 陕西 · 西安</span>
+        </div>
+    </div>
+
+    <div class="section-title">求职意向</div>
+    <div class="intent-grid">
+        <div><span class="label">求职类型：</span>全职</div>
+        <div><span class="label">意向岗位：</span>前端开发工程师</div>
+        <div><span class="label">意向城市：</span>西安 / 远程</div>
+        <div><span class="label">薪资要求：</span>面议</div>
+        <div><span class="label">求职状态：</span>随时到岗</div>
+    </div>
+
+    <div class="section-title">教育背景</div>
+    <div class="item-row">
+        <span>2019.09 - 2023.06</span>
+        <span>西安石油大学</span>
+        <span>软件工程</span>
+        <span>本科</span>
+    </div>
+
+    <div class="section-title">工作经历</div>
+    <div class="exp-container">
+        <div class="exp-header">
+            <span>2024.03 - 至今</span>
+            <span>某 SaaS 数字化研发中心</span>
+            <span>前端开发工程师</span>
+        </div>
+        <div class="exp-content">
+            <p>工作内容：</p>
+            <ul>
+                <li>主导公司核心 SaaS 资产管理系统的架构迁移，从 Vue 3 成功重构至 <strong>React 19 + TypeScript + Monorepo</strong> 体系，代码复用率提升 40%。</li>
+                <li>负责系统 UI 性能专项优化，解决大盘万级数据的渲染卡顿问题，并建立了一套标准的前端监控与报错拦截机制。</li>
+                <li>封装高度抽象的业务 Hooks（如 `useTable`, `useForm`），制定了团队内部的 TypeScript 编码规范与 Code Review 标准。</li>
+            </ul>
+            <p>工作成果：</p>
+            <ul>
+                <li>成功上线重构后的新版本，系统首屏加载时间降低 35%，线上内存泄漏反馈减少 80%。</li>
+                <li>获得部门“技术突破奖”，被评为团队核心开发者。</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section-title">项目经验</div>
+    <div class="project-detail">
+        <div class="project-title-row">
+            <span>2026.03 - 至今</span>
+            <span>个人技术博客 & AI 助手工作流</span>
+            <span>项目负责人</span>
+        </div>
+        <div class="project-text"><span class="label">项目描述：</span>该项目是一个基于 <strong>Nuxt 3</strong> 构建的高性能个人技术博客，核心亮点是集成了基于 <strong>Model Context Protocol (MCP)</strong> 的 AI 助手，实现了从零散笔记到正式文章发布的自动化闭环。</div>
+        <div class="project-text"><span class="label">项目职责：</span>1. 设计并实现 AI 与本地文件系统、SQLite 数据库的连接器 (MCP Server)；2. 开发 RAG 检索系统，提升 AI 内容生成的准确度；3. 负责前端响应式布局与 SEO 优化。</div>
+        <div class="project-sub-title">技术难点：</div>
+        <div class="project-text">1. <strong>语义召回的精确性</strong>：由于传统 SQL 检索难以处理模糊语义，设计了“SQL 匹配 + AI Summary 概览”的混合方案，解决了长文本在 RAG 中的定位偏差。</div>
+        <div class="project-text">2. <strong>AI 权限管控</strong>：在打通文件读写权限的同时，通过协议层面的 Context 控制，确保了 AI 操作的安全性和可追溯性。</div>
+        <div class="project-sub-title">技术描述：</div>
+        <div class="project-text">1. 使用 <strong>Nitro (Server Engine)</strong> 结合 SQLite 存储文章元数据；2. 利用 MCP 协议实现 AI 自动读取 Markdown 草稿、提取标签并自动提交 Git。3. 通过 Nuxt Content 模块实现极致的 Markdown 渲染与暗黑模式支持。</div>
+    </div>
+
+    <div class="project-detail">
+        <div class="project-title-row">
+            <span>2026.04 - 2026.05</span>
+            <span>SaaS 资产管理系统 (性能攻坚版)</span>
+            <span>核心开发</span>
+        </div>
+        <div class="project-text"><span class="label">项目描述：</span>该项目是企业级资产管理平台的关键模块，涉及多层级嵌套列表、大数据量实时监控大盘等高交互场景。</div>
+        <div class="project-text"><span class="label">项目职责：</span>1. 独立负责“虚拟列表”核心组件的研发；2. 封装全局请求中心与并发控制逻辑；3. 解决多端适配与 CSS 复杂排版问题。</div>
+        <div class="project-sub-title">技术难点：</div>
+        <div class="project-text">1. <strong>万级 DOM 渲染压力</strong>：传统表格在数据量超过 5000 条时会导致浏览器崩溃。难点在于如何在 React 19 渲染循环中精确计算可视区偏移。解决方案：手写 <strong>VirtualTable</strong>，利用 Phantom Height 撑开滚动条，并结合 `translateY` 偏移实现万级数据 0 卡顿。</div>
+        <div class="project-text">2. <strong>网络竞态与重复提交</strong>：用户在弱网环境下狂点按钮会导致产生重复脏数据。解决方案：封装基于 <strong>AbortController</strong> 的请求层，通过 Map 维护 Pending 队列，实现相同请求自动斩断。</div>
+        <div class="project-sub-title">技术描述：</div>
+        <div class="project-text">1. 基于 <strong>React 19 Hooks</strong> 与 TypeScript 泛型封装高复用逻辑；2. 运用 CSS <strong>Containing Block</strong> 原理实现局部定位容器，解决层级遮挡。3. 引入 pnpm workspace 实现 Monorepo 架构下的多子包依赖管理。</div>
+    </div>
+
+    <div class="section-title">自我评价</div>
+    <div class="self-eval">
+        1. 拥有扎实的计算机基础，能熟练运用 React、Vue 全家桶独立完成复杂前端项目；<br>
+        2. 对 <strong>AI + 前端</strong> 结合方向有深入研究，熟悉 MCP 协议、RAG 检索等前沿工程化方案；<br>
+        3. 具有极强的性能优化意识，擅长处理大数据量渲染、复杂网络环境下的稳定性问题；<br>
+        4. 责任心强，具备良好的团队沟通与文档编写习惯。工作之余坚持维护个人技术博客，对新技术保持敏锐的洞察力。
+    </div>
+</body>
+</html>

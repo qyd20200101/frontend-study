@@ -9,5 +9,12 @@ export default defineConfig({
       '@my-sass/core': path.resolve(__dirname, '../../packages/core/src'),
       '@my-sass/shared': path.resolve(__dirname, '../../packages/shared/src')
     }
+  }, server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      }
+    }
   }
 });

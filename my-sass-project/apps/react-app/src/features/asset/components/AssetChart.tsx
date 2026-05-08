@@ -55,20 +55,63 @@ export default function AssetChart({ title, data, onBarClick }: Props) {
 
     // 首次渲染
     chart.setOption({
-      title: { text: title, left: "center", textStyle: { fontSize: 16 } },
-      tooltip: { trigger: "axis" },
-      grid: { left: "3%", right: "4%", bottom: "3%", containLabel: true },
-      xAxis: { type: "category", data: data.map((i) => i.name) },
-      yAxis: { type: "value" },
+      title: { 
+        text: title, 
+        left: "center", 
+        top: 10,
+        textStyle: { fontSize: 18, color: "#333", fontWeight: 'normal' } 
+      },
+      tooltip: { 
+        trigger: "axis",
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+        borderWidth: 0,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+        textStyle: { color: "#333" }
+      },
+      grid: { 
+        top: 70, 
+        left: 20, 
+        right: 20, 
+        bottom: 20, 
+        containLabel: true 
+      },
+      xAxis: { 
+        type: "category", 
+        data: data.map((i) => i.name),
+        axisLabel: { color: "#666", fontSize: 12 },
+        axisLine: { lineStyle: { color: "#eee" } }
+      },
+      yAxis: { 
+        type: "value",
+        splitLine: { lineStyle: { type: "dashed", color: "#f0f0f0" } },
+        axisLabel: { color: "#999" }
+      },
       series: [
         {
           type: "bar",
           data: data.map((i) => i.value),
+          barWidth: "40%",
           showBackground: true,
-          backgroundStyle: { color: "rgba(180,180,180,0.2)" },
-          itemStyle: { color: "#1890ff", borderRadius: [4, 4, 0, 0] },
+          backgroundStyle: { color: "rgba(0,0,0,0.02)" },
+          itemStyle: { 
+            borderRadius: [6, 6, 0, 0],
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "#4facfe" },
+              { offset: 1, color: "#00f2fe" }
+            ])
+          },
+          emphasis: {
+            itemStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: "#2af598" },
+                { offset: 1, color: "#009efd" }
+              ])
+            }
+          }
         },
       ],
+      animationDuration: 1500,
+      animationEasing: "cubicOut"
     });
 
     return () => {
@@ -84,10 +127,6 @@ export default function AssetChart({ title, data, onBarClick }: Props) {
     const chart = chartInstanceRef.current;
     if (!chart) return;
 
-    if (data.length > 100) {
-      console.warn("数据量过大，图表进入限流模式");
-    }
-
     chart.setOption({
       title: { text: title },
       xAxis: { data: data.map((i) => i.name) },
@@ -100,10 +139,13 @@ export default function AssetChart({ title, data, onBarClick }: Props) {
       ref={chartRef}
       style={{
         width: "100%",
-        height: 300,
-        padding: 15,
-        borderRadius: 8,
-        background: "#fff",
+        height: 320,
+        borderRadius: 16,
+        background: "rgba(255, 255, 255, 0.8)",
+        backdropFilter: "blur(10px)",
+        boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.07)",
+        border: "1px solid rgba(255, 255, 255, 0.18)",
+        padding: "10px"
       }}
     />
   );

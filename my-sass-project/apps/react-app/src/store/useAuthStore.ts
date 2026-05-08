@@ -1,0 +1,25 @@
+// apps/react-app/src/store/useAuthStore.ts
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { SystemUser } from "@my-sass/shared";
+
+interface AuthState {
+    token: string | null;
+    user: SystemUser | null; // 修改这里：从 string 改为 SystemUser
+    setAuth: (token: string, user: SystemUser) => void;
+    clearAuth: () => void;
+}
+
+export const useAuthStore = create<AuthState>()(
+    persist(
+        (set) => ({
+            token: null,
+            user: null,
+            setAuth: (token, user) => set({ token, user }),
+            clearAuth: () => set({ token: null, user: null }),
+        }),
+        {
+            name: 'auth-storage',
+        }
+    )
+);
