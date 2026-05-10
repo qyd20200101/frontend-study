@@ -7,8 +7,6 @@ import {
   summaryInfo,
   arrToTree,
   exportCsv,
-  transitionStatus,
-  createRepair,
   type AssetProject,
   type TreeNode,
 } from "@my-sass/core";
@@ -17,23 +15,41 @@ import {
   getProjectsApi,
   batchDeleteProjectApi,
   getDepartmentsApi,
+  updateProjectApi,
+  addProjectApi,
+  workflowTransitionApi,
+  getSchemaApi,
   type PageParams,
 } from "@my-sass/shared";
-import { Button, Space, Typography } from "antd";
+import { Button, Space, Typography, message } from "antd";
 import AssetChart from "../components/AssetChart";
 import TreeItem from "../components/TreeItem";
 import VirtualTable from "../components/VirtualTable";
 import BaseModal from "../components/BaseModal";
-import { updateProjectApi } from "@my-sass/shared";
+import FormRenderer from "../../../renderer/FormRenderer";
+import HasPermission from "../../../components/HasPermission";
+import { useAuthStore } from "../../../store/useAuthStore";
 
 const { Title } = Typography;
 
 type SortOrder = "asc" | "desc" | null;
 
 export default function DataManagerPage() {
+  const { user } = useAuthStore();
   const [editingItem, setEditingItem] = useState<AssetProject | null>(null);
   const [originalSnapshot, setOriginalSnapshot] = useState<AssetProject | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [schema, setSchema] = useState<any[]>([]);
+
+  // 加载表单配置
+  const fetchSchema = async () => {
+    try {
+      const data = await getSchemaApi('asset_form');
+      if (data && data.content) setSchema(data.content);
+    } catch (err) {
+      console.error("加载 Schema 失败", err);
+    }
+  };
 
   const openEdit = (row?: AssetProject) => {
     const copy = row
@@ -55,8 +71,7 @@ export default function DataManagerPage() {
 
   const handleCancelEdit = () => {
     if (isDirty) {
-      const ok = window.confirm("内容已修改，确定放弃吗？");
-      if (!ok) return;
+      if (!window.confirm("内容已修改，确定放弃吗？")) return;
     }
     closeEdit();
   };
@@ -65,9 +80,17 @@ export default function DataManagerPage() {
     if (!editingItem || isSaving) return;
     setIsSaving(true);
     try {
-      await updateProjectApi(editingItem);
+      const payload = { ...editingItem, username: user?.username };
+      if (editingItem.id) {
+        await updateProjectApi(payload as AssetProject);
+      } else {
+        await addProjectApi(payload);
+      }
+      message.success("保存成功");
       await fetchData();
       closeEdit();
+    } catch (err) {
+      message.error("保存失败");
     } finally {
       setIsSaving(false);
     }
@@ -97,10 +120,43 @@ export default function DataManagerPage() {
   // 组织树
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
 
-  // 报修弹窗（先简化）
+  // 报修弹窗
   const [repairVisible, setRepairVisible] = useState(false);
   const [repairTargetId, setRepairTargetId] = useState<number | null>(null);
   const [repairReason, setRepairReason] = useState("");
+
+  // 将部门树打平，用于下拉选择
+  const deptOptions = useMemo(() => {
+    const flatten = (nodes: TreeNode[]): { label: string; value: number }[] => {
+      let res: { label: string; value: number }[] = [];
+      nodes.forEach(n => {
+        res.push({ label: n.name, value: n.id });
+        if (n.children) res = res.concat(flatten(n.children));
+      });
+      return res;
+    };
+    return flatten(treeData);
+  }, [treeData]);
+
+  // 动态构建 Schema
+  const dynamicSchema = useMemo(() => {
+    const processNodes = (nodes: any[]): any[] => {
+      return nodes.map(node => {
+        let newNode = { ...node };
+        if (newNode.props?.modelKey === 'deptId') {
+          newNode.props = { ...newNode.props, options: deptOptions };
+        }
+        if (newNode.props?.modelKey === 'budget') {
+          newNode.props = { ...newNode.props, type: 'number' };
+        }
+        if (newNode.children) {
+          newNode.children = processNodes(newNode.children);
+        }
+        return newNode;
+      });
+    };
+    return processNodes(schema);
+  }, [deptOptions, schema]);
 
   // 拉数据
   const fetchData = async () => {
@@ -121,31 +177,29 @@ export default function DataManagerPage() {
     }
   };
 
-  // 初始化部门树
-  const fetchDepartments = async () => {
+  // 初始化
+  const init = async () => {
     const list = await getDepartmentsApi();
     setTreeData(arrToTree(list || []));
+    await fetchSchema();
   };
 
   useEffect(() => {
-    fetchDepartments();
+    init();
   }, []);
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize, searchInput, selectedCategory, selectedDeptId]);
 
-  // 业务管道（core）
   const filtered = useMemo<AssetProject[]>(
-    () =>
-      filterAssets(apiData, {
-        selectedCategory,
-        selectedDeptId,
-        searchQuery: searchInput,
-        sortKey: "id",
-        sortOrder: null,
-      } as any),
+    () => filterAssets(apiData, {
+      selectedCategory,
+      selectedDeptId,
+      searchQuery: searchInput,
+      sortKey: "id",
+      sortOrder: null,
+    } as any),
     [apiData, selectedCategory, selectedDeptId, searchInput],
   );
 
@@ -157,10 +211,8 @@ export default function DataManagerPage() {
   const summary = useMemo(() => summaryInfo(finalData), [finalData]);
   const chartData = useMemo(() => chartSummaryData(apiData), [apiData]);
 
-  const isAllSelected =
-    finalData.length > 0 && selectedIds.size === finalData.length;
-  const isIndeterminate =
-    selectedIds.size > 0 && selectedIds.size < finalData.length;
+  const isAllSelected = finalData.length > 0 && selectedIds.size === finalData.length;
+  const isIndeterminate = selectedIds.size > 0 && selectedIds.size < finalData.length;
 
   const toggleSelection = (id: number) => {
     setSelectedIds((prev) => {
@@ -178,9 +230,7 @@ export default function DataManagerPage() {
 
   const onSort = (key: keyof AssetProject) => {
     if (sortKey === key) {
-      setSortOrder((prev) =>
-        prev === "asc" ? "desc" : prev === "desc" ? null : "asc",
-      );
+      setSortOrder((prev) => prev === "asc" ? "desc" : prev === "desc" ? null : "asc");
     } else {
       setSortKey(key);
       setSortOrder("asc");
@@ -189,8 +239,10 @@ export default function DataManagerPage() {
 
   const onBatchDelete = async () => {
     if (!selectedIds.size) return;
-    await batchDeleteProjectApi(Array.from(selectedIds));
+    if (!window.confirm(`确定要批量删除这 ${selectedIds.size} 项资产吗？`)) return;
+    await batchDeleteProjectApi(Array.from(selectedIds), user?.username || 'system');
     setSelectedIds(new Set());
+    message.success("批量删除成功");
     fetchData();
   };
 
@@ -210,25 +262,27 @@ export default function DataManagerPage() {
     setRepairReason("");
     setRepairVisible(true);
   };
+
   const onRepairConfirm = async () => {
-    if (!repairTargetId) return;
-    if (!repairReason.trim()) {
-      alert("请输入报修原因");
-      return;
+    if (!repairTargetId || !repairReason.trim()) return;
+    try {
+      await workflowTransitionApi(repairTargetId, 'report_repair', repairReason, user?.username || 'system');
+      message.success("报修申请已提交");
+      setRepairVisible(false);
+      fetchData();
+    } catch (err) {
+      message.error("操作失败");
     }
-    // 先本地流转（保持你原有体验）
-    setApiData((prev) =>
-      prev.map((p) => (p.id === repairTargetId ? createRepair({ ...p }, repairReason) : p))
-    );
-    // 如果你有后端“更新资产状态”接口，建议这里调 updateProjectApi
-    // const target = apiData.find((i) => i.id === repairTargetId);
-    // if (target) await updateProjectApi({ ...target, status: "repair" });
-    setRepairVisible(false);
   };
-  const onStatusRecover = (id: number) => {
-    setApiData((prev) =>
-      prev.map((p) => (p.id === id ? transitionStatus({ ...p }, "active") : p)),
-    );
+
+  const onStatusTransition = async (id: number, transitionName: string, label: string) => {
+    try {
+      await workflowTransitionApi(id, transitionName, `执行操作: ${label}`, user?.username || 'system');
+      message.success(`已执行: ${label}`);
+      fetchData();
+    } catch (err) {
+      message.error("操作失败");
+    }
   };
 
   return (
@@ -236,21 +290,23 @@ export default function DataManagerPage() {
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Title level={2} style={{ margin: 0 }}>资产管理控制台</Title>
         <Space>
-          <Button 
-            type="primary" 
-            icon={<span>+</span>} 
-            onClick={() => openEdit()}
-            style={{ height: 40, borderRadius: 8, fontWeight: 600 }}
-          >
-            新增资产
-          </Button>
+          <HasPermission roles={['admin', 'editor']}>
+            <Button 
+              type="primary" 
+              icon={<span>+</span>} 
+              onClick={() => openEdit()}
+              style={{ height: 40, borderRadius: 8, fontWeight: 600 }}
+            >
+              新增资产
+            </Button>
+          </HasPermission>
           <Button onClick={onExport} style={{ height: 40, borderRadius: 8 }}>导出 CSV</Button>
         </Space>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 24, alignItems: 'start' }}>
-        {/* 左侧栏：组织架构与统计 */}
         <div style={{ display: 'grid', gap: 24 }}>
+          {/* 左侧组织树 */}
           <div className="glass-card" style={{ padding: 20 }}>
             <Title level={5} style={{ marginTop: 0, marginBottom: 16 }}>组织架构</Title>
             <div style={{ maxHeight: 400, overflowY: 'auto' }}>
@@ -258,7 +314,7 @@ export default function DataManagerPage() {
                 treeData.map((n) => (
                   <TreeItem
                     key={n.id}
-                    node={n as TreeNode}
+                    node={n}
                     onNodeClick={(node) => {
                       setSelectedDeptId(node.id);
                       setPage(1);
@@ -270,17 +326,11 @@ export default function DataManagerPage() {
               )}
             </div>
             {selectedDeptId && (
-              <Button 
-                type="link" 
-                size="small" 
-                onClick={() => setSelectedDeptId(null)}
-                style={{ marginTop: 8, padding: 0 }}
-              >
-                清空部门筛选
-              </Button>
+              <Button type="link" size="small" onClick={() => setSelectedDeptId(null)} style={{ marginTop: 8, padding: 0 }}>清空部门筛选</Button>
             )}
           </div>
 
+          {/* 数据概览 */}
           <div className="glass-card" style={{ padding: 20 }}>
             <Title level={5} style={{ marginTop: 0, marginBottom: 16 }}>数据概览</Title>
             <div style={{ display: 'grid', gap: 12 }}>
@@ -292,94 +342,42 @@ export default function DataManagerPage() {
                 <span style={{ color: '#666' }}>预算总额</span>
                 <span style={{ fontWeight: 600, color: '#1677ff' }}>¥{summary.totalBudget.toLocaleString()}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#666' }}>平均预算</span>
-                <span style={{ fontWeight: 600 }}>¥{summary.average.toLocaleString()}</span>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* 右侧主栏：图表与表格 */}
         <div style={{ display: 'grid', gap: 24 }}>
-          <AssetChart
-            title="资产预算分布（按分类）"
-            data={chartData}
-            onBarClick={(name) => {
-              setSelectedCategory(name);
-              setPage(1);
-            }}
-          />
+          <AssetChart title="资产预算分布（按分类）" data={chartData} onBarClick={(name) => { setSelectedCategory(name); setPage(1); }} />
 
           <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
               <input
                 className="search-input"
                 placeholder="🔍 搜索资产名称..."
                 value={searchInput}
-                onChange={(e) => {
-                  setPage(1);
-                  setSearchInput(e.target.value);
-                }}
-                style={{ 
-                  border: '1px solid #ddd', 
-                  borderRadius: 8, 
-                  padding: '8px 12px', 
-                  width: 300,
-                  outline: 'none'
-                }}
+                onChange={(e) => { setPage(1); setSearchInput(e.target.value); }}
+                style={{ border: '1px solid #ddd', borderRadius: 8, padding: '8px 12px', width: 300, outline: 'none' }}
               />
               <Space>
-                {selectedCategory && (
-                  <Button size="small" onClick={() => setSelectedCategory("")}>清除分类: {selectedCategory}</Button>
-                )}
-                <Button 
-                  danger 
-                  disabled={!selectedIds.size}
-                  onClick={onBatchDelete}
-                >
-                  批量删除 ({selectedIds.size})
-                </Button>
+                <HasPermission roles={['admin']}>
+                  <Button danger disabled={!selectedIds.size} onClick={onBatchDelete}>批量删除 ({selectedIds.size})</Button>
+                </HasPermission>
               </Space>
             </div>
 
-            {/* 表格内容 */}
             {loading ? (
               <div style={{ padding: 40, textAlign: 'center', color: '#999' }}>加载中...</div>
             ) : (
               <div style={{ overflow: "hidden" }}>
-                {/* 表头 */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    height: 45,
-                    background: "#fafafa",
-                    borderBottom: "1px solid #f0f2f5",
-                    fontWeight: 600,
-                    padding: "0 12px",
-                    minWidth: 900,
-                  }}
-                >
+                <div style={{ display: "flex", alignItems: "center", height: 45, background: "#fafafa", borderBottom: "1px solid #f0f2f5", fontWeight: 600, padding: "0 12px", minWidth: 900 }}>
                   <div style={{ width: 45, textAlign: "center" }}>
-                    <input
-                      type="checkbox"
-                      checked={isAllSelected}
-                      ref={(el) => {
-                        if (el) el.indeterminate = isIndeterminate;
-                      }}
-                      onChange={(e) => selectAll(e.target.checked)}
-                    />
+                    <input type="checkbox" checked={isAllSelected} ref={(el) => { if (el) el.indeterminate = isIndeterminate; }} onChange={(e) => selectAll(e.target.checked)} />
                   </div>
-                  <div style={{ flex: 3, minWidth: 180, cursor: "pointer" }} onClick={() => onSort("name")}>
-                    资产名称
-                  </div>
+                  <div style={{ flex: 3, minWidth: 180, cursor: "pointer" }} onClick={() => onSort("name")}>资产名称</div>
                   <div style={{ width: 100, textAlign: "center" }}>分类</div>
-                  <div style={{ width: 140, textAlign: "right", paddingRight: 12, cursor: "pointer" }} onClick={() => onSort("budget")}>
-                    预算
-                  </div>
-                  <div style={{ width: 120, textAlign: "center" }}>状态</div>
-                  <div style={{ width: 170, textAlign: "right", paddingRight: 8 }}>操作</div>
+                  <div style={{ width: 120, textAlign: "right", paddingRight: 12, cursor: "pointer" }} onClick={() => onSort("budget")}>预算</div>
+                  <div style={{ width: 100, textAlign: "center" }}>状态</div>
+                  <div style={{ width: 220, textAlign: "right", paddingRight: 8 }}>操作</div>
                 </div>
 
                 <VirtualTable
@@ -388,36 +386,42 @@ export default function DataManagerPage() {
                   viewHeight={420}
                   onRowClick={(row) => openEdit(row)}
                   renderRow={(row) => (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        height: "100%",
-                        borderBottom: "1px solid #f2f6fc",
-                        padding: "0 12px",
-                        background: selectedIds.has(row.id) ? "#ecf5ff" : "#fff",
-                        minWidth: 900,
-                      }}
-                    >
+                    <div style={{ display: "flex", alignItems: "center", height: "100%", borderBottom: "1px solid #f2f6fc", padding: "0 12px", background: selectedIds.has(row.id) ? "#ecf5ff" : "#fff", minWidth: 900 }}>
                       <div style={{ width: 45, textAlign: "center" }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(row.id)}
-                          onChange={() => toggleSelection(row.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                        <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleSelection(row.id)} onClick={(e) => e.stopPropagation()} />
                       </div>
-                      <div style={{ flex: 3, minWidth: 180 }}>{row.name}</div>
+                      <div style={{ flex: 3, minWidth: 180, fontWeight: 500 }}>{row.name}</div>
                       <div style={{ width: 100, textAlign: "center" }}>{row.category}</div>
-                      <div style={{ width: 140, textAlign: "right", paddingRight: 12 }}>{row.budget}</div>
-                      <div style={{ width: 120, textAlign: "center" }}>{row.status}</div>
-                      <div style={{ width: 170, textAlign: "right", paddingRight: 8 }}>
-                        {row.status === "active" && (
-                          <button onClick={(e) => { e.stopPropagation(); onRepairOpen(row.id); }}>报修</button>
-                        )}
-                        {row.status === "repair" && (
-                          <button onClick={(e) => { e.stopPropagation(); onStatusRecover(row.id); }}>修复</button>
-                        )}
+                      <div style={{ width: 120, textAlign: "right", paddingRight: 12 }}>¥{row.budget.toLocaleString()}</div>
+                      <div style={{ width: 100, textAlign: "center" }}>
+                        <span style={{ 
+                          padding: '2px 8px', 
+                          borderRadius: 4, 
+                          fontSize: '12px',
+                          background: row.status === 'active' ? '#e6f7ff' : row.status === 'repair' ? '#fff7e6' : '#f5f5f5',
+                          color: row.status === 'active' ? '#1890ff' : row.status === 'repair' ? '#faad14' : '#8c8c8c'
+                        }}>{row.status}</span>
+                      </div>
+                      <div style={{ width: 220, textAlign: "right", paddingRight: 8 }}>
+                        <HasPermission roles={['admin', 'editor']}>
+                          <Space size="small">
+                            {row.status === "active" && (
+                              <>
+                                <Button size="small" onClick={(e) => { e.stopPropagation(); onRepairOpen(row.id); }}>报修</Button>
+                                <Button size="small" danger onClick={(e) => { e.stopPropagation(); onStatusTransition(row.id, 'scrap_asset', '资产报废'); }}>报废</Button>
+                              </>
+                            )}
+                            {row.status === "repair" && (
+                              <>
+                                <Button size="small" type="primary" onClick={(e) => { e.stopPropagation(); onStatusTransition(row.id, 'finish_repair', '修复完成'); }}>修复</Button>
+                                <Button size="small" danger onClick={(e) => { e.stopPropagation(); onStatusTransition(row.id, 'scrap_asset', '资产报废'); }}>报废</Button>
+                              </>
+                            )}
+                            {row.status === "scrapped" && (
+                              <Button size="small" onClick={(e) => { e.stopPropagation(); onStatusTransition(row.id, 'reactivate', '重新启用'); }}>启用</Button>
+                            )}
+                          </Space>
+                        </HasPermission>
                       </div>
                     </div>
                   )}
@@ -425,54 +429,32 @@ export default function DataManagerPage() {
               </div>
             )}
 
-            {/* 分页 */}
             <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#999' }}>总计 {total} 条数据</span>
+              <span style={{ color: '#999' }}>共 {total} 项</span>
               <Space>
-                <Button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>上一页</Button>
-                <span>第 {page} 页</span>
-                <Button onClick={() => setPage((p) => p + 1)}>下一页</Button>
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  style={{ marginLeft: 8, borderRadius: 4, padding: '4px 8px', border: '1px solid #ddd' }}
-                >
-                  <option value={50}>50 / 页</option>
-                  <option value={100}>100 / 页</option>
-                  <option value={500}>500 / 页</option>
-                </select>
+                <Button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>上一页</Button>
+                <span>{page} / {Math.ceil(total / pageSize)}</span>
+                <Button disabled={page >= Math.ceil(total / pageSize)} onClick={() => setPage(p => p + 1)}>下一页</Button>
               </Space>
             </div>
-          </div> {/* 结束 glass-card */}
+          </div>
 
-          {/* 弹窗逻辑保持在层级外 */}
-          <BaseModal
-            open={!!editingItem}
-            title={editingItem?.id ? "资产详情" : "新增资产"}
-            onCancel={handleCancelEdit}
-            onConfirm={handleSaveEdit}
-          >
+          {/* 资产详情弹窗 */}
+          <BaseModal open={!!editingItem} title={editingItem?.id ? "资产详情" : "新增资产"} onCancel={handleCancelEdit} onConfirm={handleSaveEdit}>
             {editingItem && (
-              <div style={{ display: "grid", gap: 12 }}>
-                <label>名称 <input value={editingItem.name} onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })} style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }} /></label>
-                <label>预算 <input type="number" value={editingItem.budget} onChange={(e) => setEditingItem({ ...editingItem, budget: Number(e.target.value || 0) })} style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }} /></label>
-                <label>分类 <input value={editingItem.category} onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })} style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }} /></label>
-              </div>
+              <FormRenderer nodes={dynamicSchema} value={editingItem as any} onChange={(key, val) => setEditingItem({ ...editingItem, [key]: val })} />
             )}
           </BaseModal>
 
-          <BaseModal
-            open={repairVisible}
-            title="资产报修申请"
-            onCancel={() => setRepairVisible(false)}
-            onConfirm={onRepairConfirm}
-          >
+          {/* 报修弹窗 */}
+          <BaseModal open={repairVisible} title="资产报修申请" onCancel={() => setRepairVisible(false)} onConfirm={onRepairConfirm}>
             <div style={{ display: "grid", gap: 12 }}>
-              <textarea rows={4} value={repairReason} onChange={(e) => setRepairReason(e.target.value)} placeholder="请输入报修原因" style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ddd' }} />
+              <label style={{ fontWeight: 500 }}>报修原因</label>
+              <textarea rows={4} value={repairReason} onChange={(e) => setRepairReason(e.target.value)} placeholder="请输入详细原因..." style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #ddd', outline: 'none' }} />
             </div>
           </BaseModal>
-        </div> {/* 结束右侧主栏 */}
-      </div> {/* 结束主网格 */}
+        </div>
+      </div>
     </div>
   );
 }

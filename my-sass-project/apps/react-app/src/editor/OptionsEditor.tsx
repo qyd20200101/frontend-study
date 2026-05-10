@@ -1,3 +1,9 @@
+// apps/react-app/src/editor/OptionsEditor.tsx
+import { Button, Input, Space, Card, Typography } from "antd";
+import { PlusOutlined, DeleteOutlined, ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
+
+const { Text } = Typography;
+
 interface OptionItem {
   label: string;
   value: string;
@@ -34,60 +40,35 @@ export default function OptionsEditor({ value = [], onChange }: Props) {
     [next[index], next[target]] = [next[target], next[index]];
     onChange(next);
   };
+
   return (
-    <div style={{ display: "grid", gap: 8 }}>
+    <Space direction="vertical" style={{ width: "100%" }}>
       {options.map((opt, idx) => (
-        <div
-          key={`${opt.value}-${idx}`}
-          style={{
-            border: "1px solid #ddd",
-            borderRadius: 6,
-            padding: 8,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          <label>
-            文案(label)
-            <input
+        <Card size="small" key={`${opt.value}-${idx}`} style={{ background: '#fcfcfc' }}>
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <Input
+              addonBefore="文案"
+              size="small"
               value={opt.label}
               onChange={(e) => updateItem(idx, { label: e.target.value })}
-              style={{ width: "100%", marginTop: 4 }}
             />
-          </label>
-          <label>
-            值(value)
-            <input
+            <Input
+              addonBefore="数值"
+              size="small"
               value={opt.value}
               onChange={(e) => updateItem(idx, { value: e.target.value })}
-              style={{ width: "100%", marginTop: 4 }}
             />
-          </label>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" onClick={() => moveItem(idx, "up")}>
-              上移
-            </button>
-            <button type="button" onClick={() => moveItem(idx, "down")}>
-              下移
-            </button>
-            <button
-              type="button"
-              onClick={() => removeItem(idx)}
-              style={{
-                color: "#fff",
-                background: "#ff4d4f",
-                border: 0,
-                padding: "4px 8px",
-              }}
-            >
-              删除
-            </button>
-          </div>
-        </div>
+            <Space size="small" style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button size="small" icon={<ArrowUpOutlined />} onClick={() => moveItem(idx, "up")} disabled={idx === 0} />
+              <Button size="small" icon={<ArrowDownOutlined />} onClick={() => moveItem(idx, "down")} disabled={idx === options.length - 1} />
+              <Button size="small" danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
+            </Space>
+          </Space>
+        </Card>
       ))}
-      <button type="button" onClick={addItem}>
-        + 添加选项
-      </button>
-    </div>
+      <Button block type="dashed" icon={<PlusOutlined />} onClick={addItem}>
+        添加选项
+      </Button>
+    </Space>
   );
 }

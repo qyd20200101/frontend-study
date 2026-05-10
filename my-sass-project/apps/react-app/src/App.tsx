@@ -1,9 +1,12 @@
+// apps/react-app/src/App.tsx
 import { BrowserRouter, Navigate, Route, Routes, Link, useLocation } from "react-router-dom";
 import { Button, Layout, Menu, Space, Typography } from "antd";
+import DashboardPage from "./features/asset/pages/DashboardPage";
 import DataManagerPage from "./features/asset/pages/DataManagerPage";
 import DesignerPage from "./pages/DesignerPage";
 import PreviewPage from "./pages/PreviewPage";
 import UserManagementPage from "./features/system/pages/UserManagementPage";
+import AuditLogPage from "./features/system/pages/AuditLogPage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import AuthGuard from "./components/AuthGuard";
 import { useAuthStore } from "./store/useAuthStore";
@@ -16,22 +19,24 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   const menuItems = [
+    { key: '/dashboard', label: <Link to="/dashboard">数据看板</Link> },
     { key: '/asset', label: <Link to="/asset">资产管理</Link> },
     { key: '/designer', label: <Link to="/designer">表单设计器</Link> },
     { key: '/preview', label: <Link to="/preview">表单预览</Link> },
-    { key: '/system', label: <Link to="/system">系统设置</Link> },
+    { key: '/audit', label: <Link to="/audit">审计日志</Link> },
+    { key: '/system', label: <Link to="/system">用户管理</Link> },
   ];
 
   return (
     <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
-      <Header className="nav-header">
+      <Header className="nav-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 50px' }}>
         <Space size="large">
           <Title level={4} style={{ margin: 0, color: '#1677ff', fontWeight: 800 }}>SaaS Admin</Title>
           <Menu 
             mode="horizontal" 
             selectedKeys={[location.pathname]} 
             items={menuItems} 
-            style={{ border: 'none', background: 'transparent', minWidth: 400 }}
+            style={{ border: 'none', background: 'transparent', minWidth: 600 }}
           />
         </Space>
         <Button type="primary" danger ghost onClick={() => clearAuth()} style={{ borderRadius: 8 }}>
@@ -56,10 +61,12 @@ export default function App() {
           <AuthGuard>
             <AppLayout>
               <Routes>
-                <Route path="/" element={<Navigate to="/asset" replace />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/asset" element={<DataManagerPage />} />
                 <Route path="/designer" element={<DesignerPage />} />
                 <Route path="/preview" element={<PreviewPage />} />
+                <Route path="/audit" element={<AuthGuard requiredRoles={['admin']}><AuditLogPage /></AuthGuard>} />
                 <Route path="/system" element={<UserManagementPage />} />
                 <Route path="*" element={<div style={{ padding: 24 }}>404 Not Found</div>} />
               </Routes>

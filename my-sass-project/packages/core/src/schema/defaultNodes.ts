@@ -1,4 +1,4 @@
-import type { BaseNode } from '../types/schema';
+import type { BaseNode } from '../types/schema.js';
 
 export const defaultInputNode: BaseNode = {
   id: 'input_1',

@@ -1,4 +1,4 @@
-import type { BaseNode } from '../types/schema';
+import type { BaseNode } from '../types/schema.js';
 
 export function buildRules(node: BaseNode) {
   const rules: Array<{ required?: boolean; message?: string }> = [];

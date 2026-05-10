@@ -1,4 +1,4 @@
-import type { AssetProject } from "./types";
+import type { AssetProject } from "./types.js";
 
 export interface AssetBusinessState<T extends AssetProject> {
     selectedCategory: string;

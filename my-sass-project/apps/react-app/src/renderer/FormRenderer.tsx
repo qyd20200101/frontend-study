@@ -11,9 +11,9 @@ interface Props {
 
 export default function FormRenderer(props: Props) {
     const checkVisible = (node: BaseNode) => {
-        const visibleOn = node.props?.visibleOn;
-        if (!visibleOn) return true;
-        return evaluateVisibleExpression(visibleOn, props.value);
+        const expression = node.visibility;
+        if (!expression) return true;
+        return evaluateVisibleExpression(expression, props.value);
     };
 
     const renderNode = (node: BaseNode) => {

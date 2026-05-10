@@ -2,13 +2,25 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 
-export default function AuthGuard({ children }: { children: React.ReactNode }) {
-    const token = useAuthStore((state) => state.token);
+interface Props {
+    children: React.ReactNode;
+    requiredRoles?: string[];
+}
+
+export default function AuthGuard({ children, requiredRoles }: Props) {
+    const { token, user } = useAuthStore();
     const location = useLocation();
 
     if (!token) {
-        // 未登录，跳转到登录页，并记录当前尝试访问的路径以便登录后跳回
         return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    if (requiredRoles && requiredRoles.length > 0) {
+        const hasRole = user?.roles?.some(role => requiredRoles.includes(role));
+        if (!hasRole) {
+            // 已登录但无权限，可以跳转到 403 页面或首页
+            return <Navigate to="/" replace />;
+        }
     }
 
     return <>{children}</>;

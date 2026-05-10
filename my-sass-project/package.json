@@ -6,5 +6,9 @@
     "dev": "pnpm --filter react-app dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "@vitest/ui": "^4.1.5",
+    "vitest": "^4.1.5"
   }
 }

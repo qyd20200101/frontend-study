@@ -12,4 +12,5 @@ export interface BaseNode {
   label?: string;
   props?: Record<string, any>;
   children?: BaseNode[];
+  visibility?: string;
 }

@@ -1,5 +1,5 @@
-import request from "./request";
-import type { SystemUser, UserQuery, LoginParams, AuthResponse } from "../types/user";
+import request from "./request.js";
+import type { SystemUser, UserQuery, LoginParams, AuthResponse } from "../types/user.js";
 
 /*
 获取所有用户列表

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 
 interface VirtualTableProps<T extends { id: number | string }> {
     data: T[];
@@ -8,59 +8,80 @@ interface VirtualTableProps<T extends { id: number | string }> {
     renderRow: (row: T) => React.ReactNode;
 }
 
+const TableRow = React.memo(({ children, height, onClick }: { children: React.ReactNode, height: number, onClick: () => void }) => (
+    <div
+        style={{ width: "100%", boxSizing: "border-box", height }}
+        onClick={onClick}
+    >
+        {children}
+    </div>
+));
+
 export default function VirtualTable<T extends { id: number | string }>(props: VirtualTableProps<T>) {
     const { data, itemHeight = 50, viewHeight, onRowClick, renderRow } = props;
-
     const [scrollTop, setScrollTop] = useState(0);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const requestRef = useRef<number>(0);
 
-    const phantomHeight = useMemo(() => data.length * itemHeight, [data.length, itemHeight]);
-    const visibleCount = useMemo(
-        () => Math.ceil(viewHeight / itemHeight) + 2,
-        [viewHeight, itemHeight]
-    );
+    const onScroll = useCallback(() => {
+        if (scrollContainerRef.current) {
+            const currentScrollTop = scrollContainerRef.current.scrollTop;
+            if (requestRef.current) cancelAnimationFrame(requestRef.current);
+            requestRef.current = requestAnimationFrame(() => {
+                setScrollTop(currentScrollTop);
+            });
+        }
+    }, []);
 
-    const startIndex = useMemo(() => Math.floor(scrollTop / itemHeight), [scrollTop, itemHeight]);
-    const ednIndex = useMemo(() => startIndex + visibleCount, [startIndex, visibleCount]);
-    const visibleData = useMemo(() => data.slice(startIndex, ednIndex), [data, startIndex, ednIndex]);
-    const offsetY = useMemo(() => startIndex * itemHeight, [startIndex, itemHeight]);
+    useEffect(() => {
+        return () => {
+            if (requestRef.current) cancelAnimationFrame(requestRef.current);
+        };
+    }, []);
+
+    const phantomHeight = data.length * itemHeight;
+    const visibleCount = Math.ceil(viewHeight / itemHeight) + 3; // 稍微多预留一点缓冲区
+
+    const startIndex = Math.floor(scrollTop / itemHeight);
+    const endIndex = Math.min(startIndex + visibleCount, data.length);
+    
+    const visibleData = useMemo(() => {
+        return data.slice(startIndex, endIndex);
+    }, [data, startIndex, endIndex]);
+
+    const offsetY = startIndex * itemHeight;
 
     return (
         <div
+            ref={scrollContainerRef}
             style={{
                 overflowY: "auto",
                 position: "relative",
-                background: "#fff",
+                background: "transparent",
                 height: viewHeight,
+                willChange: "transform",
+                contain: "strict"
             }}
-            onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
+            onScroll={onScroll}
         >
-            <div
-                style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    right: 0,
-                    zIndex: -1,
-                    height: phantomHeight,
-                }}
-            />
+            <div style={{ height: phantomHeight, pointerEvents: 'none' }} />
             <div
                 style={{
                     position: "absolute",
                     left: 0,
                     right: 0,
                     top: 0,
-                    transform: `translateY(${offsetY}px)`,
+                    transform: `translate3d(0, ${offsetY}px, 0)`,
                 }}
             >
                 {visibleData.map((item) => (
-                    <div
-                        key={item.id}
-                        style={{ width: "100%", boxSizing: "border-box", height: itemHeight }}
+                    <TableRow 
+                        key={item.id} 
+                        height={itemHeight} 
                         onClick={() => onRowClick?.(item)}
                     >
                         {renderRow(item)}
-                    </div>
+                    </TableRow>
                 ))}
                 {data.length === 0 && (
                     <div style={{ textAlign: "center", color: "#909399", padding: 40 }}>暂无匹配数据</div>
@@ -68,4 +89,4 @@ export default function VirtualTable<T extends { id: number | string }>(props: V
             </div>
         </div>
     );
-}
+}

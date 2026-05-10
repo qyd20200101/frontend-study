@@ -1,4 +1,4 @@
-import type { VisibleExpressionVars } from './types';
+import type { VisibleExpressionVars } from './types.js';
 
 /**
  * 支持形如 "{user.role} === 'admin'" 的表达式

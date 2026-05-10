@@ -1,5 +1,5 @@
 // apps/server/src/mockData.ts
-import type { SystemUser, AssetProject } from '@my-sass/shared';
+import type { SystemUser } from '@my-sass/shared';
 
 // 1. 用户数据
 export const MOCK_USERS: SystemUser[] = [
@@ -18,7 +18,7 @@ export const MOCK_DEPARTMENTS = [
 ];
 
 // 3. 资产项目数据
-export const MOCK_PROJECTS: AssetProject[] = [
+export const MOCK_PROJECTS: any[] = [
   { 
     id: 1, 
     name: 'MacBook Pro M3 - 研发部专用', 

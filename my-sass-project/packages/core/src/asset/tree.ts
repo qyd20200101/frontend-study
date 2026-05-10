@@ -1,4 +1,4 @@
-import type { TreeNode } from "./types";
+import type { TreeNode } from "./types.js";
 
 export function arrToTree(items: TreeNode[]): TreeNode[] {
     const res: TreeNode[] = [];

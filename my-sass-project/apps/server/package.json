@@ -10,14 +10,16 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "express": "^4.19.0",
+    "@my-sass/shared": "workspace:*",
+    "better-sqlite3": "^12.9.0",
     "cors": "^2.8.5",
-    "jsonwebtoken": "^9.0.2",
-    "@my-sass/shared": "workspace:*"
+    "express": "^4.19.0",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.12.7",
     "tsx": "^4.7.2",

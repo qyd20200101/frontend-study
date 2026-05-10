@@ -1,4 +1,4 @@
-import type { AssetProject, AssetStatus } from "./types";
+import type { AssetProject, AssetStatus } from "./types.js";
 
 export function transitionStatus(item: AssetProject, nextStatus: AssetStatus, operator = "系统管理员") {
     const oldStatus = item.status;
