@@ -3,7 +3,7 @@ export default { name: 'FormBuilder' }
 </script>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, provide } from 'vue';
 import { ElMessage } from 'element-plus';
 // 🚀 确保这里导入的名称与 lowcode.ts 中定义的一致 (FormComponent)
 import type { FormComponent, FormSchema } from '../../types/lowcode';
@@ -123,6 +123,16 @@ const deleteComponent = (id: string) => {
     if (activeComponentId.value === id) activeComponentId.value = null;
 };
 
+// 🚀 通过 provide 向所有子孙组件提供共享状态和方法
+provide('builderContext', {
+    activeComponentId,
+    labelWidth: computed(() => schema.value.labelWidth),
+    selectComponent,
+    deleteComponent,
+    handleCanvasDragStart,
+    handleDrop
+});
+
 // --- 出码逻辑 ---
 const generateCode = () => {
     if (!schema.value.components.length) return ElMessage.warning('画布为空');
@@ -207,10 +217,7 @@ onMounted(async () => {
                         <p v-if="!schema.components.length">从左侧拖拽组件至此</p>
                         <transition-group name="list">
                             <BuilderNode v-for="(comp, index) in schema.components" :key="comp.id"
-                                :comp="comp" :parent-list="schema.components" :index="index"
-                                :active-component-id="activeComponentId" :label-width="schema.labelWidth"
-                                @select="selectComponent" @delete="deleteComponent"
-                                @dragstart="handleCanvasDragStart" @drop="handleDrop" />
+                                :comp="comp" :parent-list="schema.components" :index="index" />
                         </transition-group>
                     </div>
                 </div>
