@@ -12,6 +12,7 @@ class RefImpl<T> {
     if (activeEffect) {
       this.dep.add(activeEffect);
     }
+    return this._value;
   }
   set value(newVal: T) {
     if (newVal === this._value) {
@@ -19,7 +20,19 @@ class RefImpl<T> {
     }
     this._value = newVal;
     //派发更新：通知所有依赖重写执行
-    this.dep.forEach((effect) => effect());
+    // this.dep.forEach((effect) => effect());
+    const jobQueue = new Set<Function>();
+
+    function queueJob(fn: Function) {
+      jobQueue.add(fn);
+      Promise.resolve().then(() => {
+        //执行队列里所有的effect
+        //清空队列
+        jobQueue.forEach((job) => job());
+        jobQueue.clear();
+      });
+    }
+    this.dep.forEach((effect) => queueJob(effect));
   }
 }
 
