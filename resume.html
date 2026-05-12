@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钱玉东 - 前端开发工程师</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1a1a2e;
+            --accent: #2d6a4f;
+            --line-color: #e5e5e5;
+            --text-color: #333;
+            --muted: #666;
+            --font-main: 'Noto Sans SC', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-main);
+            color: var(--text-color);
+            background: #fff;
+            line-height: 1.6;
+            padding: 44px 48px;
+            max-width: 880px;
+            margin: 0 auto;
+            font-size: 13.5px;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2.5px solid var(--primary-color);
+            padding-bottom: 18px;
+            margin-bottom: 22px;
+        }
+        .header h1 {
+            font-size: 30px;
+            margin-bottom: 8px;
+            letter-spacing: 3px;
+            color: var(--primary-color);
+        }
+        .header .contact {
+            display: flex;
+            justify-content: center;
+            gap: 22px;
+            color: var(--muted);
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+        .header .contact i { color: var(--accent); margin-right: 3px; }
+
+        .section-title {
+            background: #f7f7f7;
+            padding: 6px 12px;
+            font-weight: 700;
+            font-size: 15.5px;
+            margin: 22px 0 12px 0;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .intent-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 0 6px;
+        }
+        .intent-grid .label { font-weight: 600; color: #000; }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 6px;
+            font-size: 13.5px;
+        }
+        .item-row span:first-child { color: var(--muted); }
+
+        .exp-container { padding: 0 6px; margin-bottom: 8px; }
+        .exp-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .exp-header span:first-child { color: var(--muted); font-weight: 500; }
+        .exp-company { color: var(--accent) !important; font-weight: 700 !important; }
+        .exp-content p { font-weight: 700; margin: 8px 0 4px 0; color: #111; font-size: 13px; }
+        .exp-content ul { padding-left: 20px; list-style-type: disc; }
+        .exp-content li { margin-bottom: 6px; }
+
+        .project-detail { margin-bottom: 18px; padding: 0 6px; }
+        .project-title-row {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            border-bottom: 1px dashed #ccc;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .project-title-row span:first-child { color: var(--muted); font-weight: 500; }
+        .project-desc { margin-bottom: 6px; color: #444; }
+        .project-label { font-weight: 700; color: #000; }
+        .tech-tag {
+            display: inline-block;
+            background: #eef2f5;
+            color: #333;
+            padding: 1px 7px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-right: 3px;
+            font-weight: 500;
+        }
+
+        .skill-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 24px;
+            padding: 0 6px;
+        }
+        .skill-grid .row { display: flex; gap: 8px; }
+        .skill-grid .label { font-weight: 700; white-space: nowrap; min-width: 72px; }
+
+        .self-eval { padding: 0 6px; line-height: 1.9; }
+
+        @media print {
+            body { padding: 20px 32px; }
+            .no-print { display: none; }
+        }
+
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--primary-color);
+            color: white;
+            padding: 7px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 1000;
+        }
+        .print-btn:hover { opacity: 0.85; }
+    </style>
+</head>
+<body>
+    <button class="print-btn no-print" onclick="window.print()">🖨 导出 PDF</button>
+
+    <!-- ====== 头部 ====== -->
+    <div class="header">
+        <h1>钱玉东</h1>
+        <div class="contact">
+            <span><i class="fas fa-phone"></i> 192-9422-1944</span>
+            <span><i class="fas fa-envelope"></i> q1326255779@163.com</span>
+            <span><i class="fab fa-github"></i> github.com/qyd20200101</span>
+            <span><i class="fas fa-map-marker-alt"></i> 陕西 · 西安</span>
+        </div>
+    </div>
+
+    <!-- ====== 求职意向 ====== -->
+    <div class="section-title">求职意向</div>
+    <div class="intent-grid">
+        <div><span class="label">求职类型：</span>全职</div>
+        <div><span class="label">意向岗位：</span>前端开发工程师</div>
+        <div><span class="label">意向城市：</span>西安</div>
+        <div><span class="label">薪资要求：</span>面议</div>
+        <div><span class="label">求职状态：</span>随时到岗</div>
+        <div><span class="label">工作年限：</span>2 年</div>
+    </div>
+
+    <!-- ====== 技术栈 ====== -->
+    <div class="section-title">技术栈</div>
+    <div class="skill-grid">
+        <div class="row"><span class="label">核心框架：</span><span>Vue 3 (Composition API)、React 19 (Hooks)</span></div>
+        <div class="row"><span class="label">工程化：</span><span>TypeScript、pnpm Monorepo、Vite、Vitest</span></div>
+        <div class="row"><span class="label">状态管理：</span><span>Pinia、Zustand</span></div>
+        <div class="row"><span class="label">UI 框架：</span><span>Element Plus、Ant Design、Tailwind CSS</span></div>
+        <div class="row"><span class="label">后端基础：</span><span>Node.js、Express、SQLite</span></div>
+        <div class="row"><span class="label">AI 工程化：</span><span>MCP 协议、RAG 检索、AI Agent 集成</span></div>
+    </div>
+
+    <!-- ====== 工作经历 ====== -->
+    <div class="section-title">工作经历</div>
+    <div class="exp-container">
+        <div class="exp-header">
+            <span>2024.03 — 2026.03</span>
+            <span class="exp-company">西安青云网络科技有限公司</span>
+            <span>前端开发工程师</span>
+        </div>
+        <div class="exp-content">
+            <p>公司背景：</p>
+            <div style="color:#555; margin-bottom:6px;">
+                一家面向中小企业客户的 SaaS 服务商，核心产品为固定资产管理系统与轻量级业务中台，
+                覆盖资产全生命周期管理、工单流转、数据看板等模块，服务客户 200+。
+            </div>
+            <p>主要职责与技术产出：</p>
+            <ul>
+                <li><strong>双框架架构演进</strong>：针对资产管理系统从 Vue 3 到 React 19 的渐进迁移，主导将状态机、动态校验规则、可见性表达式等核心逻辑从 UI 层剥离至 <strong>packages/core</strong> 纯逻辑共享层，核心代码复用率达 <strong>60%</strong>，新功能双端同步开发周期缩短约 40%。</li>
+                <li><strong>渲染性能优化</strong>：独立设计并实现 <strong>VirtualTable</strong> 虚拟滚动组件，采用 translate3d 硬件加速 + requestAnimationFrame 节流；万级数据列表首帧渲染从 3.2s 降至 <strong>16ms</strong>，滚动帧率稳定在 60fps。</li>
+                <li><strong>请求层治理</strong>：基于 AbortController 封装请求竞态控制中间层，通过 Pending Map 自动取消过期/重复的 Mutate 请求，解决弱网环境下的脏数据写入问题。</li>
+                <li><strong>组件库建设</strong>：基于 Element Plus 二次封装 20+ 业务组件（高级筛选器、动态表单、批量操作栏），统一团队开发规范，新页面平均开发耗时降低约 30%。</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ====== 项目经验 ====== -->
+    <div class="section-title">项目经验</div>
+
+    <!-- 项目1: 低代码引擎 -->
+    <div class="project-detail">
+        <div class="project-title-row">
+            <span>2025.10 — 至今</span>
+            <span>低代码搭建引擎 (my-sass-project)</span>
+            <span>项目负责人</span>
+        </div>
+        <div class="project-desc">
+            <span class="project-label">项目概述：</span>
+            基于 pnpm Monorepo 架构的工业级低代码平台，支持拖拽式页面搭建、JSON Schema 驱动渲染、一键导出可运行的 Vue SFC 源码。
+        </div>
+        <div class="project-desc">
+            <span class="project-label">技术栈：</span>
+            <span class="tech-tag">Vue 3</span><span class="tech-tag">React 19</span><span class="tech-tag">TypeScript</span><span class="tech-tag">pnpm Workspace</span><span class="tech-tag">Vitest</span><span class="tech-tag">MCP</span>
+        </div>
+        <div class="project-desc">
+            <span class="project-label">核心工作：</span>
+            ① 设计 <strong>packages/core</strong> 共享层，通过依赖倒置原则实现一套 Schema 驱动逻辑支撑 Vue/React 双端渲染；
+            ② 实现 JSON Schema → Vue SFC 的递归 AST 代码生成器，通过递归 Context 维护路径堆栈，精准处理多层级嵌套（分组/栅格/表格）的 <strong>v-model</strong> 路径映射；
+            ③ 编写 60+ 个 Vitest 单元测试覆盖校验规则与状态迁移路径；
+            ④ 集成 MCP 协议实现 AI 辅助代码骨架生成。
+        </div>
+    </div>
+
+    <!-- 项目2: 博客 & AI 工作流 -->
+    <div class="project-detail">
+        <div class="project-title-row">
+            <span>2025.12 — 至今</span>
+            <span>技术博客 & AI 助手工作流</span>
+            <span>独立开发者</span>
+        </div>
+        <div class="project-desc">
+            <span class="project-label">项目概述：</span>
+            基于 Nuxt 3 构建的 SSR 技术博客，集成 AI 助手实现本地笔记 → 知识库检索 → 正式文章发布的自动化闭环。
+        </div>
+        <div class="project-desc">
+            <span class="project-label">技术栈：</span>
+            <span class="tech-tag">Nuxt 3</span><span class="tech-tag">SQLite</span><span class="tech-tag">MCP 协议</span><span class="tech-tag">RAG</span><span class="tech-tag">TypeScript</span>
+        </div>
+        <div class="project-desc">
+            <span class="project-label">核心工作：</span>
+            ① 实现 MCP Server 连接器，打通 AI 与本地文件系统，支持知识点自动归档与检索；
+            ② 设计 SQL 关键词匹配 + AI Summary 的混合 RAG 检索方案，解决长文本语义召回偏差问题；
+            ③ 通过 MCP 协议层 Context 控制限制 AI 操作范围，确保本地文件操作安全可追溯。
+        </div>
+    </div>
+
+    <!-- 项目3: 资产管理数据看板 -->
+    <div class="project-detail">
+        <div class="project-title-row">
+            <span>2024.08 — 2025.03</span>
+            <span>资产数据可视化看板 (公司项目)</span>
+            <span>前端核心开发</span>
+        </div>
+        <div class="project-desc">
+            <span class="project-label">项目概述：</span>
+            为公司 SaaS 资产管理系统的数据看板模块，支持多维度的资产状态统计、趋势分析与可视化大屏展示。
+        </div>
+        <div class="project-desc">
+            <span class="project-label">技术栈：</span>
+            <span class="tech-tag">Vue 3</span><span class="tech-tag">ECharts 5</span><span class="tech-tag">Pinia</span><span class="tech-tag">Element Plus</span><span class="tech-tag">TypeScript</span>
+        </div>
+        <div class="project-desc">
+            <span class="project-label">核心工作：</span>
+            ① 基于 ECharts 5 封装 8 类可复用图表组件（折线/柱状/饼图/热力图等），支持自适应缩放与主题切换；
+            ② 设计看板布局配置系统，通过 JSON 配置切换预设看板模板，减少定制看板的重复开发；
+            ③ 使用 Pinia + 缓存策略实现图表数据按需加载，首屏渲染时间控制在 1.2s 以内。
+        </div>
+    </div>
+
+    <!-- ====== 教育背景 ====== -->
+    <div class="section-title">教育背景</div>
+    <div class="item-row">
+        <span>2019.09 — 2023.06</span>
+        <span>西安石油大学</span>
+        <span>软件工程</span>
+        <span>本科</span>
+    </div>
+
+    <!-- ====== 自我评价 ====== -->
+    <div class="section-title">自我评价</div>
+    <div class="self-eval">
+        1. 2 年前端开发经验，具备 TypeScript 工程化能力，熟练使用 Vue 3 与 React 双框架，能独立承担中大型前端模块的设计与开发；<br>
+        2. 对 <strong>AI + 前端</strong> 方向持续研究，实战经验涵盖 MCP 协议、RAG 检索与 AI Agent 工程化落地；<br>
+        3. 有较强的性能优化意识，擅长虚拟滚动、请求竞态控制等场景的专项优化，注重量化优化结果；<br>
+        4. 习惯编写单元测试，代码风格规范，具备良好的自驱力与持续学习习惯，GitHub 保持活跃提交。
+    </div>
+</body>
+</html>
