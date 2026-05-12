@@ -52,30 +52,30 @@ export default function DashboardPage() {
 
       <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
         <Col span={6}>
-          <Card className="glass-card" bordered={false}>
-            <Statistic title="资产总数 (件)" value={data.totalCount} valueStyle={{ color: '#1677ff', fontWeight: 600 }} />
+          <Card className="glass-card" variant="borderless">
+            <Statistic title="资产总数 (件)" value={data.totalCount} styles={{ content: { color: '#1677ff', fontWeight: 600 } }} />
           </Card>
         </Col>
         <Col span={6}>
-          <Card className="glass-card" bordered={false}>
-            <Statistic title="预算总额 (元)" value={data.totalBudget} precision={2} prefix="¥" valueStyle={{ color: '#52c41a', fontWeight: 600 }} />
+          <Card className="glass-card" variant="borderless">
+            <Statistic title="预算总额 (元)" value={data.totalBudget} precision={2} prefix="¥" styles={{ content: { color: '#52c41a', fontWeight: 600 } }} />
           </Card>
         </Col>
         <Col span={6}>
-          <Card className="glass-card" bordered={false}>
+          <Card className="glass-card" variant="borderless">
             <Statistic 
               title="在用资产" 
               value={data.statusDist.find((s: any) => s.status === 'active')?.count || 0} 
-              valueStyle={{ color: '#1890ff', fontWeight: 600 }} 
+              styles={{ content: { color: '#1890ff', fontWeight: 600 } }} 
             />
           </Card>
         </Col>
         <Col span={6}>
-          <Card className="glass-card" bordered={false}>
+          <Card className="glass-card" variant="borderless">
             <Statistic 
               title="报修资产" 
               value={data.statusDist.find((s: any) => s.status === 'repair')?.count || 0} 
-              valueStyle={{ color: '#faad14', fontWeight: 600 }} 
+              styles={{ content: { color: '#faad14', fontWeight: 600 } }} 
             />
           </Card>
         </Col>

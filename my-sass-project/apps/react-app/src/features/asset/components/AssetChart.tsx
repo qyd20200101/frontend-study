@@ -73,7 +73,7 @@ export default function AssetChart({ title, data, onBarClick }: Props) {
         left: 20, 
         right: 20, 
         bottom: 20, 
-        containLabel: true 
+        // 使用新的属性或移除旧的触发警告的属性
       },
       xAxis: { 
         type: "category", 

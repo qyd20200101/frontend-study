@@ -135,7 +135,7 @@ export default function UserManagementPage() {
                 open={isModalOpen}
                 onOk={handleSubmit}
                 onCancel={() => setIsModalOpen(false)}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form form={form} layout="vertical" initialValues={{ status: 'active', role: 'viewer' }}>
                     <Form.Item
@@ -156,17 +156,21 @@ export default function UserManagementPage() {
                         </Form.Item>
                     )}
                     <Form.Item name="role" label="角色" rules={[{ required: true }]}>
-                        <Select>
-                            <Select.Option value="admin">管理员 (Admin)</Select.Option>
-                            <Select.Option value="editor">编辑员 (Editor)</Select.Option>
-                            <Select.Option value="viewer">观察员 (Viewer)</Select.Option>
-                        </Select>
+                        <Select
+                            options={[
+                                { value: 'admin', label: '管理员 (Admin)' },
+                                { value: 'editor', label: '编辑员 (Editor)' },
+                                { value: 'viewer', label: '观察员 (Viewer)' },
+                            ]}
+                        />
                     </Form.Item>
                     <Form.Item name="status" label="账户状态">
-                        <Select>
-                            <Select.Option value="active">活跃 (Active)</Select.Option>
-                            <Select.Option value="disabled">禁用 (Disabled)</Select.Option>
-                        </Select>
+                        <Select
+                            options={[
+                                { value: 'active', label: '活跃 (Active)' },
+                                { value: 'disabled', label: '禁用 (Disabled)' },
+                            ]}
+                        />
                     </Form.Item>
                 </Form>
             </Modal>

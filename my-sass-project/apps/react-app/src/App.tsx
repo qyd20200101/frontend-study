@@ -3,7 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, Link, useLocation } from "react
 import { Button, Layout, Menu, Space, Typography } from "antd";
 import DashboardPage from "./features/asset/pages/DashboardPage";
 import DataManagerPage from "./features/asset/pages/DataManagerPage";
-import DesignerPage from "./pages/DesignerPage";
+import Designer from './designer/Designer';
 import PreviewPage from "./pages/PreviewPage";
 import UserManagementPage from "./features/system/pages/UserManagementPage";
 import AuditLogPage from "./features/system/pages/AuditLogPage";
@@ -21,7 +21,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   const menuItems = [
     { key: '/dashboard', label: <Link to="/dashboard">数据看板</Link> },
     { key: '/asset', label: <Link to="/asset">资产管理</Link> },
-    { key: '/designer', label: <Link to="/designer">表单设计器</Link> },
+    { key: '/designer', label: <Link to="/designer">表单设计</Link> },
     { key: '/preview', label: <Link to="/preview">表单预览</Link> },
     { key: '/audit', label: <Link to="/audit">审计日志</Link> },
     { key: '/system', label: <Link to="/system">用户管理</Link> },
@@ -33,6 +33,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         <Space size="large">
           <Title level={4} style={{ margin: 0, color: '#1677ff', fontWeight: 800 }}>SaaS Admin</Title>
           <Menu 
+            theme="dark"
             mode="horizontal" 
             selectedKeys={[location.pathname]} 
             items={menuItems} 
@@ -64,7 +65,7 @@ export default function App() {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/asset" element={<DataManagerPage />} />
-                <Route path="/designer" element={<DesignerPage />} />
+                <Route path="/designer" element={<Designer />} />
                 <Route path="/preview" element={<PreviewPage />} />
                 <Route path="/audit" element={<AuthGuard requiredRoles={['admin']}><AuditLogPage /></AuthGuard>} />
                 <Route path="/system" element={<UserManagementPage />} />

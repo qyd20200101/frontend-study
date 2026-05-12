@@ -42,10 +42,10 @@ export default function OptionsEditor({ value = [], onChange }: Props) {
   };
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }}>
+    <Space orientation="vertical" style={{ width: "100%" }}>
       {options.map((opt, idx) => (
         <Card size="small" key={`${opt.value}-${idx}`} style={{ background: '#fcfcfc' }}>
-          <Space direction="vertical" style={{ width: '100%' }} size="small">
+          <Space orientation="vertical" style={{ width: '100%' }} size="small">
             <Input
               addonBefore="文案"
               size="small"

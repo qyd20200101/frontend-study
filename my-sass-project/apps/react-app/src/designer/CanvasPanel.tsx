@@ -1,11 +1,11 @@
 import { useDesignerStore } from '../store/useDesignerStore';
 import FormRenderer from '../renderer/FormRenderer';
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, useDroppable, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { BaseNode } from '@my-sass/core';
+import { defaultInputNode } from '@my-sass/core';
 
-// 拖拽和选中的包装器
 function SortableNodeWrapper({ node, children }: { node: BaseNode, children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: node.id });
   const selectedNodeId = useDesignerStore((state) => state.selectedId);
@@ -17,11 +17,13 @@ function SortableNodeWrapper({ node, children }: { node: BaseNode, children: Rea
     transform: CSS.Transform.toString(transform),
     transition,
     border: isSelected ? '2px solid #1890ff' : '2px dashed transparent',
-    padding: 8,
+    padding: 12,
     marginBottom: 8,
     position: 'relative' as const,
-    backgroundColor: isSelected ? '#e6f7ff' : 'transparent',
+    backgroundColor: isSelected ? '#e6f7ff' : '#fafafa',
     cursor: 'move',
+    borderRadius: 8,
+    boxShadow: isSelected ? '0 0 0 2px rgba(24,144,255,0.2)' : 'none',
   };
 
   return (
@@ -40,57 +42,80 @@ function SortableNodeWrapper({ node, children }: { node: BaseNode, children: Rea
   );
 }
 
-export default function CanvasPanel() {
-  const nodes = useDesignerStore((state) => state.nodes);
-  const reorderNodes = useDesignerStore((state) => state.reorderNodes);
-  const selectNode = useDesignerStore((state) => state.setSelectedId);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 }, // 区分点击和拖拽
-    })
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = nodes.findIndex((n) => n.id === active.id);
-      const newIndex = nodes.findIndex((n) => n.id === over.id);
-      reorderNodes(oldIndex, newIndex);
-    }
-  };
+function DroppableCanvas({ children }: { children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: 'canvas-droppable' });
 
   return (
-    <div 
-      style={{ flex: 1, backgroundColor: '#f5f5f5', padding: 24, overflow: 'auto' }}
-      onClick={() => selectNode(null)} // 点击空白处取消选中
+    <div
+      ref={setNodeRef}
+      style={{
+        minHeight: 500,
+        padding: 24,
+        borderRadius: 12,
+        border: isOver ? '3px dashed #1890ff' : '3px dashed #d9d9d9',
+        backgroundColor: isOver ? 'rgba(24,144,255,0.04)' : '#fff',
+        transition: 'all 0.3s ease',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      }}
     >
-      <div style={{ backgroundColor: '#fff', minHeight: 600, padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+      {children}
+    </div>
+  );
+}
+
+interface CanvasPanelProps {
+  activeDrag: string | null;
+  onDragStart: (id: string) => void;
+  onDragEnd: (event: DragEndEvent) => void;
+}
+
+export default function CanvasPanel({ activeDrag, onDragStart, onDragEnd }: CanvasPanelProps) {
+  const nodes = useDesignerStore((state) => state.nodes);
+  const selectNode = useDesignerStore((state) => state.setSelectedId);
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        background: 'linear-gradient(135deg, #f0f5ff 0%, #f5f0ff 50%, #f0f5f5 100%)',
+        padding: 24,
+        overflow: 'auto',
+      }}
+      onClick={() => selectNode(null)}
+    >
+      <DroppableCanvas>
         {nodes.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#999', marginTop: 100 }}>
-            请从左侧点击添加组件
+          <div style={{ textAlign: 'center', color: '#bfbfbf', marginTop: 120, fontSize: 16, userSelect: 'none' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>⬇️</div>
+            从左侧拖拽组件到此处，或点击添加
           </div>
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={nodes.map((n: BaseNode) => n.id)} strategy={verticalListSortingStrategy}>
-              <FormRenderer
-                nodes={nodes}
-                value={{}}
-                onChange={() => {}}
-                nodeWrapper={(node, element) => (
-                  <SortableNodeWrapper key={node.id} node={node}>
-                    {element}
-                  </SortableNodeWrapper>
-                )}
-              />
-            </SortableContext>
-          </DndContext>
+          <SortableContext items={nodes.filter(Boolean).map((n: BaseNode) => n.id)} strategy={verticalListSortingStrategy}>
+            <FormRenderer
+              nodes={nodes}
+              value={{}}
+              onChange={() => {}}
+              nodeWrapper={(node, element) => (
+                <SortableNodeWrapper key={node.id} node={node}>
+                  {element}
+                </SortableNodeWrapper>
+              )}
+            />
+          </SortableContext>
         )}
-      </div>
-      
-      <div style={{ marginTop: 24, padding: 16, backgroundColor: '#333', color: '#fff', borderRadius: 8 }}>
-        <h4>当前 Schema 数据 (只读)</h4>
-        <pre style={{ fontSize: 12 }}>{JSON.stringify(nodes, null, 2)}</pre>
+      </DroppableCanvas>
+
+      <DragOverlay>
+        {activeDrag?.startsWith('material-') ? (
+          <div style={{ padding: '10px 16px', backgroundColor: '#e6f7ff', borderRadius: 6, border: '2px solid #1890ff', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+            + {activeDrag.replace('material-', '').toUpperCase()}
+          </div>
+        ) : null}
+      </DragOverlay>
+
+      <div style={{ marginTop: 24, padding: 16, backgroundColor: '#1a1a2e', color: '#a8d8ea', borderRadius: 8 }}>
+        <h4 style={{ color: '#fff', fontSize: 13, marginBottom: 8 }}>当前 Schema 数据（只读）</h4>
+        <pre style={{ fontSize: 11, maxHeight: 200, overflow: 'auto' }}>{JSON.stringify(nodes, null, 2)}</pre>
       </div>
     </div>
   );
