@@ -1,6 +1,6 @@
-# 低代码表单系统 - 开发者指南
+# 低代码表单系统 — 开发者指南
 
-## 🏗️ 架构设计
+## 架构概览
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -13,263 +13,206 @@
 │                        ↓                              │
 │              FormSchema JSON Schema                   │
 │                        ↓                              │
-│         saveFormSchemeApi (/forms/save)               │
+│         saveFormSchemeApi → POST /forms/save          │
 └─────────────────────────────────────────────────────┘
                         ↓
-                   服务器数据库
+                   服务器存储
                         ↓
 ┌─────────────────────────────────────────────────────┐
 │         FormConsumer (消费端)                        │
 │  ┌────────────────────────────────────┐              │
-│  │  表单动态渲染 + 验证 + 提交         │              │
+│  │  动态渲染 + 验证 + 提交 + 代码生成  │              │
 │  └────────────────────────────────────┘              │
-│         ↓              ↓                              │
-│   代码生成      表单提交处理                           │
 └─────────────────────────────────────────────────────┘
 ```
 
-## 🔑 核心概念
+---
 
-### FormSchema（表单配置）
-表单的完整定义，包括所有组件、验证规则、布局设置等。
+## 核心数据结构
 
+### FormSchema
 ```typescript
-{
-  formId: "form_123456",
-  title: "用户信息表单",
-  labelWidth: "100px",
-  components: [
-    // ... FormComponent 数组
-  ]
+interface FormSchema {
+  formId: string;
+  title: string;
+  labelWidth: string;
+  components: FormComponent[];
+  description?: string;
+  submitButtonText?: string;
+  resetButtonText?: string;
 }
 ```
 
-### FormComponent（表单组件）
-单个表单字段的定义，包括类型、验证、属性等。
-
+### FormComponent
 ```typescript
-{
-  id: "input_001",
-  type: "input",
-  label: "用户名",
-  field: "username",
-  required: true,
-  props: {
-    placeholder: "请输入用户名",
-    maxLength: 20
-  }
+interface FormComponent {
+  id: string;
+  type: ComponentType;  // 'input' | 'textarea' | 'number' | 'select' | 'radio' | 'checkbox' | 'switch' | 'date' | 'time'
+  label: string;
+  field: string;
+  required: boolean;
+  props: Record<string, any>;
+  validation?: ValidationRule[];
+  disabled?: boolean;
+  help?: string;
+  className?: string;
 }
 ```
 
-## 📊 数据流向
+---
 
-### 构建流程
-1. 用户在 FormBuilder 中拖拽组件
-2. 配置组件属性
-3. 点击"保存发布"
-4. 通过 `saveFormSchemeApi` 发送到服务器
-5. 服务器保存到数据库
+## 组件类型速查
 
-### 使用流程
-1. FormConsumer 页面加载
-2. 通过 `getFormSchemaApi` 从服务器获取配置
-3. 使用 `initFormData` 初始化表单数据
-4. 使用 `generateValidationRules` 生成验证规则
-5. 渲染动态表单
-6. 用户填写并提交
+| 类型 | Element Plus 组件 | 默认值 | 特殊配置 |
+|------|-------------------|--------|----------|
+| `input` | el-input | null | placeholder / maxLength / minLength |
+| `textarea` | el-input (type=textarea) | null | rows / resize / maxLength |
+| `number` | el-input-number | 0 | min / max / step |
+| `select` | el-select | [] | options |
+| `radio` | el-radio-group | [] | options |
+| `checkbox` | el-checkbox-group | [] | options |
+| `switch` | el-switch | false | activeText / inactiveText |
+| `date` | el-date-picker | null | type / format |
+| `time` | el-time-picker | null | format / isRange |
 
-## 🛠️ 扩展指南
+---
 
-### 添加新组件类型
+## 工具函数速查
 
-#### Step 1: 更新类型定义
 ```typescript
-// src/types/lowcode.ts
-export type ComponentType = 
-  | 'input' 
-  | 'select' 
-  | 'radio' 
-  | 'checkbox' 
-  | 'switch' 
-  | 'date'
-  | 'textarea'      // 新增
-  | 'time'          // 新增
+import {
+  getElComponent,           // type → 组件名
+  getDefaultValue,         // type → 默认值
+  getTriggerType,          // type → 验证触发事件
+  initFormData,            // 组件列表 → 初始 formData
+  generateValidationRules, // 组件列表 → Element Plus rules
+  formatComponentProps,    // 组件 → 属性字符串
+  validateComponentConfig, // 组件 → { valid, errors }
+  cloneComponent,          // 深拷贝组件
+} from '@/utils/lowcode';
+
+import {
+  generateElValidationRules, // 生成完整验证规则
+  getValidationTemplate,     // 获取预定义模板
+  getTriggerByType,          // 获取触发事件
+} from '@/utils/validation';
 ```
 
-#### Step 2: 更新组件映射
+---
+
+## 添加新组件类型（5 步）
+
+### Step 1: 更新类型定义
 ```typescript
-// src/utils/lowcode.ts
-export const getElComponent = (type: string): string => {
-  const map: Record<string, string> = {
-    'input': 'el-input',
-    'select': 'el-select',
-    'textarea': 'el-input',  // 新增
-    'time': 'el-time-picker', // 新增
-    // ...
-  };
-  return map[type] || 'el-input';
-};
+// src/types/lowcode.ts — 扩展 ComponentType
+export type ComponentType = 'input' | 'select' | ... | '新类型';
 ```
 
-#### Step 3: 添加默认值处理
-```typescript
-// src/utils/lowcode.ts
-export const getDefaultValue = (type: string): any => {
-  switch (type) {
-    case 'switch':
-      return false;
-    case 'checkbox':
-    case 'select':
-    case 'radio':
-      return [];
-    case 'time':           // 新增
-      return null;
-    default:
-      return null;
-  }
-};
-```
-
-#### Step 4: 更新验证规则触发器
+### Step 2: 更新组件映射 + 默认值
 ```typescript
 // src/utils/lowcode.ts
-export const getTriggerType = (type: string): string => {
-  return ['input', 'textarea'].includes(type) ? 'blur' : 'change';
-};
+// getElComponent: 添加映射
+// getDefaultValue: 添加默认值 case
+// getTriggerType: 更新触发事件数组
 ```
 
-#### Step 5: 在 FormBuilder 中添加物料
+### Step 3: 更新 FormBuilder 物料库
 ```typescript
-// src/views/lowcode/FormBuilder.vue
-const materialList = ref([
-  { type: 'input', label: '单行文本', icon: 'Edit' },
-  { type: 'textarea', label: '多行文本', icon: 'Document' }, // 新增
-  { type: 'time', label: '时间选择', icon: 'Clock' }, // 新增
-  // ...
-]);
+// views/lowcode/FormBuilder.vue
+materialList.value.push({ type: '新类型', label: '标签', icon: 'Icon' });
 ```
 
-### 自定义组件配置编辑器
-
-在 `src/components/ComponentConfig.vue` 中添加新组件的配置UI：
-
+### Step 4: 添加配置面板
+在 `ComponentConfig.vue` 中为新类型添加配置表单：
 ```vue
-<template>
-  <template v-else-if="component.type === 'textarea'">
-    <el-divider>多行文本配置</el-divider>
-    
-    <el-form-item label="行数">
-      <el-input-number 
-        v-model.number="component.props.rows"
-        :min="1"
-      />
-    </el-form-item>
-
-    <el-form-item label="最大字符数">
-      <el-input-number 
-        v-model.number="component.props.maxLength"
-        :min="0"
-      />
-    </el-form-item>
-  </template>
+<template v-else-if="component.type === '新类型'">
+  <el-divider>新类型配置</el-divider>
+  <!-- 配置项 -->
 </template>
 ```
 
-## 🔄 高级用法
+### Step 5: 更新代码生成器
+在 `simpleAstGenerator.ts` 中添加新类型的模板生成逻辑。
 
-### 1. 条件显示字段
+---
 
-添加 `visible` 属性到 FormComponent：
+## AST 代码生成器
 
+### 使用方式
+```typescript
+import { SimpleASTGenerator } from '@/utils/simpleAstGenerator';
+
+// 生成组件代码
+const code = SimpleASTGenerator.generateComponent(schema.value.components);
+
+// 验证生成的代码
+const validation = SimpleASTGenerator.validateGeneratedCode(code);
+if (!validation.valid) {
+  console.error('生成错误:', validation.errors);
+}
+```
+
+### 旧方案 vs AST 方案
+
+| 特性 | 旧方案（字符串拼接） | AST 方案 |
+|------|---------------------|---------|
+| 实现方式 | 字符串拼接 | AST 遍历生成 |
+| 代码验证 | 无 | 有基础验证 |
+| 代码格式化 | 手动 | 自动 |
+| 扩展性 | 差 | 好 |
+| 维护难度 | 高 | 低 |
+
+### 性能优化
+- **缓存结果**: 用 Map 缓存已生成的代码，避免重复生成
+- **异步生成**: 大型表单用 `setTimeout` 异步生成，不阻塞 UI
+
+---
+
+## 高级用法
+
+### 条件显示字段
 ```typescript
 {
   id: "other_reason",
   type: "input",
-  label: "其他原因",
   field: "otherReason",
   visible: (formData) => formData.reason === 'other',
-  props: { placeholder: "请说明原因" }
 }
 ```
 
-在渲染时检查：
-```vue
-<el-form-item 
-  v-if="!comp.visible || comp.visible(formData)"
-  :label="comp.label"
->
-  <!-- ... -->
-</el-form-item>
-```
-
-### 2. 字段联动
-
-在 FormConsumer 中监听字段变化：
-
+### 字段联动
 ```typescript
-watch(
-  () => formData.value.categoryId,
-  (newCategoryId) => {
-    // 根据分类加载子类别
-    loadSubcategories(newCategoryId);
-  }
-);
+watch(() => formData.value.categoryId, (newId) => {
+  loadSubcategories(newId);
+});
 ```
 
-### 3. 动态选项加载
-
+### 自定义验证
 ```typescript
-// 异步加载select选项
-const loadOptions = async (fieldName: string) => {
-  const options = await fetchOptions(fieldName);
-  const component = schema.components.find(c => c.field === fieldName);
-  if (component) {
-    component.props.options = options;
-  }
-};
+{
+  validator: (rule, value, callback) => {
+    checkUnique(value).then(() => callback()).catch(e => callback(new Error(e)));
+  },
+  trigger: 'blur'
+}
 ```
 
-### 4. 自定义验证规则
+---
 
-```typescript
-const customRules = {
-  email: [
-    { 
-      required: true, 
-      message: '邮箱为必填项', 
-      trigger: 'blur' 
-    },
-    {
-      validator: (rule, value, callback) => {
-        // 自定义异步验证
-        checkEmailUnique(value).then(() => {
-          callback();
-        }).catch(() => {
-          callback(new Error('邮箱已被使用'));
-        });
-      },
-      trigger: 'blur'
-    }
-  ]
-};
-```
-
-## 🧪 测试建议
-
-### 单元测试示例
+## 测试示例
 
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { getElComponent, initFormData } from '@/utils/lowcode';
 
 describe('lowcode utils', () => {
-  it('should map component types correctly', () => {
+  it('getElComponent maps types correctly', () => {
     expect(getElComponent('input')).toBe('el-input');
     expect(getElComponent('select')).toBe('el-select');
-    expect(getElComponent('unknown')).toBe('el-input');
+    expect(getElComponent('unknown')).toBe('el-input'); // fallback
   });
 
-  it('should initialize form data correctly', () => {
+  it('initFormData initializes values by type', () => {
     const components = [
       { type: 'input', field: 'name' },
       { type: 'switch', field: 'active' },
@@ -281,99 +224,24 @@ describe('lowcode utils', () => {
 });
 ```
 
-### 集成测试示例
+---
 
-```typescript
-describe('FormBuilder Integration', () => {
-  it('should build form and save to server', async () => {
-    // 1. 创建表单
-    const schema = createTestSchema();
-    
-    // 2. 保存表单
-    await saveFormSchemeApi(schema);
-    
-    // 3. 验证是否保存成功
-    const saved = await getFormSchemaApi();
-    expect(saved.formId).toBe(schema.formId);
-    expect(saved.components.length).toBe(schema.components.length);
-  });
-});
-```
+## 调试技巧
 
-## 📈 性能优化
+1. **Vue DevTools** — 查看组件树和 Pinia 状态
+2. **打印 Schema**: `console.log(JSON.stringify(schema.value, null, 2))`
+3. **监听数据变化**: `watch(() => formData.value, console.log, { deep: true })`
+4. **Axios 拦截器调试**: 在 `request.ts` 拦截器中加 `console.log`
 
-### 1. 组件懒加载
-```typescript
-const FormBuilder = () => import('@/views/lowcode/FormBuilder.vue');
-const FormConsumer = () => import('@/views/lowcode/FormConsumer.vue');
-```
+---
 
-### 2. 列表虚拟化（大量组件时）
-使用 `el-virtual-list` 包装组件列表
+## 最佳实践
 
-### 3. 数据记忆化
-```typescript
-const memoizedValidationRules = computed(() => {
-  return generateValidationRules(schema.value.components);
-}, {
-  compare: (a, b) => JSON.stringify(a) === JSON.stringify(b)
-});
-```
-
-### 4. 代码分割
-```typescript
-// 只在需要时加载验证工具
-import { generateValidationRules } from '@/utils/validation';
-```
-
-## 🐛 调试技巧
-
-### 1. 启用 Vue DevTools
-在浏览器中使用 Vue DevTools 查看组件树和状态
-
-### 2. 打印表单配置
-```typescript
-// 在 FormBuilder 控制台
-console.log(JSON.stringify(schema.value, null, 2));
-```
-
-### 3. 监听表单数据变化
-```typescript
-watch(
-  () => formData.value,
-  (newData) => {
-    console.log('表单数据:', newData);
-  },
-  { deep: true }
-);
-```
-
-### 4. API请求调试
-```typescript
-// 在 network 标签页查看请求
-// 或使用 axios 拦截器
-import axios from 'axios';
-
-axios.interceptors.request.use(config => {
-  console.log('API Request:', config);
-  return config;
-});
-```
-
-## 📚 相关资源
-
-- [Vue 3 文档](https://vuejs.org/)
-- [Element Plus 文档](https://element-plus.org/)
-- [TypeScript 文档](https://www.typescriptlang.org/)
-
-## 🎯 最佳实践
-
-1. **类型安全** - 充分利用 TypeScript
-2. **代码复用** - 提取通用逻辑到 utils
-3. **错误处理** - 完善的 try-catch 和错误提示
-4. **性能优化** - 使用 computed 和 watch 优化
-5. **代码注释** - 关键函数添加 JSDoc 注释
-6. **测试覆盖** - 关键逻辑编写单元测试
+1. **充分利用 TypeScript** — 所有接口定义在 `types/lowcode.ts`
+2. **提取通用逻辑到 utils** — 避免 FormBuilder 和 FormConsumer 重复代码
+3. **computed 做缓存** — 验证规则、格式化字符串等纯计算用 computed
+4. **关键函数加 JSDoc** — 工具函数写清楚入参/返回值
+5. **核心逻辑写单元测试** — 用 vitest，跑在 `packages/core`
 
 ---
 

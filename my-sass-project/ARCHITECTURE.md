@@ -1,357 +1,101 @@
-# 低代码表单系统 - 架构设计文档
+# 低代码表单系统 — 架构设计文档
 
-## 📐 系统架构图
+## 技术栈
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         浏览器端 (Frontend)                              │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │                    Router: /form-builder                           │ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐ │ │
-│  │  │   Left Pane  │  │   Canvas     │  │  Right Panel             │ │ │
-│  │  │              │  │              │  │  ┌────────────────────┐  │ │
-│  │  │  物料库:     │  │  表单设计器  │  │  │  ComponentConfig   │  │ │
-│  │  │  - input     │  │              │  │  │                    │  │ │
-│  │  │  - select    │  │  拖拽编辑    │  │  │  基础配置:         │  │ │
-│  │  │  - radio     │  │  排序        │  │  │  - field          │  │ │
-│  │  │  - checkbox  │  │  预览        │  │  │  - label          │  │ │
-│  │  │  - switch    │  │              │  │  │  - required       │  │ │
-│  │  │  - date      │  │              │  │  │  - props          │  │ │
-│  │  │              │  │              │  │  │                    │  │ │
-│  │  │ 拖拽出发     │  │  FormSchema  │  │  │ 表单全局配置       │  │ │
-│  │  └──────────────┘  │  (内存中)    │  │  └────────────────────┘  │ │
-│  │       ↓             │              │  └──────────────────────────┘ │ │
-│  │    dragstart        │              │             ↑                  │ │
-│  │    setData          │              │         配置更新              │ │
-│  │                     │              │                                │ │
-│  │                     │   drop       │                                │ │
-│  │                     │   ↓          │                                │ │
-│  │                     │  addComponent │                               │ │
-│  │                     │  到 components│                               │ │
-│  │                     │  数组         │                               │ │
-│  │                     │              │                                │ │
-│  │                     │  预览: ✅    │                                │ │
-│  │                     │  生成代码:   │                                │ │
-│  │                     │  - Vue 代码  │                                │ │
-│  │                     │  - JSON      │                                │ │
-│  │                     │              │                                │ │
-│  │                     │ saveButton   │                                │ │
-│  │                     │    ↓         │                                │ │
-│  │                     │  验证        │                                │ │
-│  │                     │  序列化      │                                │ │
-│  │                     │              │                                │ │
-│  └────────────────────────────────────────────────────────────────────┘ │
-│                              ↓                                            │
-│                    saveFormSchemeApi()                                    │
-│                              ↓                                            │
-├─────────────────────────────────────────────────────────────────────────┤
-│                         网络层 (HTTP)                                    │
-│                   POST /forms/save                                       │
-└─────────────────────────────────────────────────────────────────────────┘
-                              ↓
-                    ┌─────────────────────┐
-                    │   服务器 (Backend)   │
-                    │                     │
-                    │ Express/Django/...  │
-                    │                     │
-                    │ Route: POST /forms/ │
-                    │ save                │
-                    │                     │
-                    │ - 验证请求         │
-                    │ - 保存到数据库      │
-                    │ - 返回成功响应      │
-                    └─────────────────────┘
-                              ↓
-                    ┌─────────────────────┐
-                    │   数据库 (Database)  │
-                    │                     │
-                    │ MongoDB/MySQL/...  │
-                    │                     │
-                    │ Collection: forms   │
-                    │ {                   │
-                    │   formId: "...",   │
-                    │   title: "...",    │
-                    │   components: [...] │
-                    │ }                   │
-                    └─────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         浏览器端 (Frontend)                              │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │              Router: /form-consumer                               │ │
-│  │                                                                    │ │
-│  │  ┌──────────────────────────────────────────────────────────────┐ │ │
-│  │  │                FormConsumer 组件                             │ │ │
-│  │  │                                                              │ │ │
-│  │  │  onMounted() {                                              │ │ │
-│  │  │    getFormSchemaApi() ←─ 获取表单配置                       │ │ │
-│  │  │      ↓                                                       │ │ │
-│  │  │    initFormData()    ←─ 初始化表单数据                      │ │ │
-│  │  │      ↓                                                       │ │ │
-│  │  │    generateValidationRules() ←─ 生成验证规则                │ │ │
-│  │  │      ↓                                                       │ │ │
-│  │  │    schema.value = data                                      │ │ │
-│  │  │  }                                                           │ │ │
-│  │  │                                                              │ │ │
-│  │  │  ┌──────────────────────────────────────────────────────┐  │ │ │
-│  │  │  │  El-Form 组件                                        │  │ │ │
-│  │  │  │  :model="formData"                                   │  │ │ │
-│  │  │  │  :rules="formRules"                                  │  │ │ │
-│  │  │  │                                                       │  │ │ │
-│  │  │  │  v-for comp in schema.components                     │  │ │ │
-│  │  │  │    El-Form-Item                                      │  │ │ │
-│  │  │  │      :is="getElComponent(comp.type)"                 │  │ │ │
-│  │  │  │      v-model="formData[comp.field]"                  │  │ │ │
-│  │  │  │                                                       │  │ │ │
-│  │  │  │  El-Button                                           │  │ │ │
-│  │  │  │    @click="handleSubmit"                             │  │ │ │
-│  │  │  │    @click="handleReset"                              │  │ │ │
-│  │  │  │    @click="generateTemplateCode"                     │  │ │ │
-│  │  │  └──────────────────────────────────────────────────────┘  │ │ │
-│  │  │                                                              │ │ │
-│  │  │  提交流程:                                                  │ │ │
-│  │  │    handleSubmit()                                           │ │ │
-│  │  │      ↓                                                       │ │ │
-│  │  │    formRef.validate()                                       │ │ │
-│  │  │      ↓                                                       │ │ │
-│  │  │    POST /api/form-submit                                    │ │ │
-│  │  │      ↓                                                       │ │ │
-│  │  │    ElMessage.success()                                      │ │ │
-│  │  │                                                              │ │ │
-│  │  │  生成代码:                                                  │ │ │
-│  │  │    generateTemplateCode()                                   │ │ │
-│  │  │      ↓                                                       │ │ │
-│  │  │    生成 Vue 完整代码                                         │ │ │
-│  │  │      ↓                                                       │ │ │
-│  │  │    显示在 Dialog 中                                         │ │ │
-│  │  │      ↓                                                       │ │ │
-│  │  │    copyCode()                                               │ │ │
-│  │  │      ↓                                                       │ │ │
-│  │  │    navigator.clipboard.writeText()                          │ │ │
-│  │  │                                                              │ │ │
-│  │  └──────────────────────────────────────────────────────────┘  │ │ │
-│  │                                                                  │ │ │
-│  └────────────────────────────────────────────────────────────────┘ │ │
-│                                                                      │ │
-└─────────────────────────────────────────────────────────────────────┘
-```
+### 前端
+- **核心框架**: Vue 3 (Composition API) + TypeScript
+- **构建工具**: Vite 6（`vite-plugin-compression` Gzip 压缩）
+- **UI 组件库**: Element Plus 2.x
+- **路由管理**: Vue Router 4
+- **状态管理**: Pinia 3 + `pinia-plugin-persistedstate`
+- **网络请求**: Axios 1.x（二次封装：Token 无感刷新 + 请求队列控制）
+- **工程化**: `unplugin-auto-import` / `unplugin-vue-components` / `unplugin-icons`（零样板代码导入）
 
-## 🗂️ 模块化设计
+### 后端
+- **服务框架**: Node.js + Express 5
+- **中间件**: `cors`
+- **鉴权**: JWT 体系
+
+---
+
+## 目录结构
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     类型定义层 (types/)                         │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ lowcode.ts                                               │  │
-│  │  - ComponentType                                         │  │
-│  │  - FormComponent                                         │  │
-│  │  - FormSchema                                            │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                   工具函数层 (utils/)                           │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ lowcode.ts (核心工具)                                    │  │
-│  │  - getElComponent()         → 组件映射                  │  │
-│  │  - getDefaultValue()        → 默认值                    │  │
-│  │  - getTriggerType()         → 触发事件                  │  │
-│  │  - initFormData()           → 初始化数据                │  │
-│  │  - generateValidationRules()→ 验证规则                  │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ validation.ts (验证工具)                                │  │
-│  │  - generateElValidationRules()  → Element Plus 规则     │  │
-│  │  - generateValidationRulesCode()→ 代码形式规则          │  │
-│  │  - getTriggerByType()           → 触发事件              │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                   API 层 (api/)                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ form.ts                                                  │  │
-│  │  - saveFormSchemeApi(data)  → POST /forms/save          │  │
-│  │  - getFormSchemaApi()       → GET /forms/latest         │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                  组件层 (components/)                           │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ FormPreview.vue                                          │  │
-│  │  - 接收 schema prop                                      │  │
-│  │  - 渲染表单                                              │  │
-│  │  - 处理提交                                              │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ ComponentConfig.vue                                      │  │
-│  │  - 接收 component prop                                   │  │
-│  │  - 编辑组件配置                                          │  │
-│  │  - 支持类型特定配置                                      │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                 视图层 (views/lowcode/)                         │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ FormBuilder.vue                                          │  │
-│  │  - 左侧物料库                                            │  │
-│  │  - 中间画布（核心设计器）                                │  │
-│  │  - 右侧配置面板                                          │  │
-│  │  - 生成代码与预览                                        │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ FormConsumer.vue                                         │  │
-│  │  - 加载表单配置                                          │  │
-│  │  - 动态渲染表单                                          │  │
-│  │  - 验证与提交                                            │  │
-│  │  - 生成代码                                              │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## 🔄 数据流向
-
-### 构建流程 (Building Flow)
-```
-用户操作
-  ↓
-FormBuilder 组件状态更新
-  ↓
-schema.value 更新
-  ↓
-画布重新渲染
-  ↓
-用户点击"保存发布"
-  ↓
-saveFormSchemeApi() 调用
-  ↓
-HTTP POST /forms/save
-  ↓
-服务器保存到数据库
-  ↓
-返回成功消息
-  ↓
-ElMessage.success()
-```
-
-### 消费流程 (Consuming Flow)
-```
-FormConsumer 页面加载
-  ↓
-onMounted 触发
-  ↓
-getFormSchemaApi() 获取配置
-  ↓
-initFormData() 初始化表单数据
-  ↓
-generateValidationRules() 生成验证规则
-  ↓
-schema.value 赋值
-  ↓
-el-form 组件渲染
-  ↓
-v-for 循环 components
-  ↓
-动态创建 el-form-item
-  ↓
-用户填写表单
-  ↓
-点击提交
-  ↓
-formRef.validate() 验证
-  ↓
-验证通过 → POST /api/form-submit
-  ↓
-显示成功消息
-```
-
-## 📦 组件依赖图
-
-```
-FormBuilder.vue
-├── ComponentConfig.vue (右侧配置面板)
-├── El-Card
-├── El-Form
-├── El-Tabs
-├── El-Button
-└── import: getElComponent, getTriggerType
-
-FormConsumer.vue
-├── FormPreview.vue (可选)
-├── El-Card
-├── El-Form
-├── El-Dialog
-├── El-Button
-└── import: getElComponent, initFormData, generateValidationRules
-
-ComponentConfig.vue
-├── El-Form
-├── El-FormItem
-├── El-Input
-├── El-InputNumber
-├── El-Select
-├── El-Switch
-├── El-Dialog
-├── El-Button
-└── El-Tag
-
-FormPreview.vue
-├── El-Card
-├── El-Form
-├── El-FormItem
-├── El-Button
-├── El-Empty
-└── import: getElComponent, initFormData, generateValidationRules
-```
-
-## 🔗 状态管理流
-
-```
-FormBuilder (左)
-├── schema (ref<FormSchema>)
-│   ├── formId
-│   ├── title
-│   ├── labelWidth
-│   └── components[]
-├── materialList (ref)
-├── activeComponentId (ref)
-├── activeComponent (computed from activeComponentId)
-└── 方法
-    ├── handleDragStart()
-    ├── handleDrop()
-    ├── selectComponent()
-    ├── deleteComponent()
-    ├── generateCode()
-    └── handleSave()
-
-ComponentConfig (右)
-├── component (props)
-├── showOptionsDialog (ref)
-├── editingOptions (ref)
-└── 方法
-    ├── addOption()
-    ├── confirmOptions()
-    └── watch: 监听 showOptionsDialog
-
-FormConsumer
-├── schema (ref<FormSchema | null>)
-├── formData (ref<Record>)
-├── formRules (ref<Record>)
-├── generatedCode (ref)
-├── showCodeDialog (ref)
-├── 方法
-    ├── handleSubmit()
-    ├── handleReset()
-    ├── generateTemplateCode()
-    └── copyCode()
+my-sass-project/
+├── apps/
+│   ├── vue-app/src/                # Vue 3 前端（低代码主战场）
+│   │   ├── views/lowcode/          # FormBuilder.vue / FormConsumer.vue
+│   │   ├── components/
+│   │   │   ├── BuilderNode.vue     # 设计时画板递归渲染器
+│   │   │   ├── FormNode.vue        # 运行时表单递归渲染器
+│   │   │   ├── ComponentConfig.vue # 右侧组件属性配置面板
+│   │   │   └── FormPreview.vue     # 预览组件
+│   │   ├── hooks/                  # useForm.ts / useTable.ts / useAuth
+│   │   ├── store/                  # Pinia 状态管理
+│   │   ├── api/                    # 接口声明层（form.ts / user.ts）
+│   │   ├── types/                  # 低代码核心类型（lowcode.ts）
+│   │   ├── utils/
+│   │   │   ├── request.ts          # Axios 封装（Token 刷新 + 全局异常）
+│   │   │   ├── lowcode.ts          # 低代码工具（默认值 / 校验规则生成）
+│   │   │   └── simpleAstGenerator.ts # AST 代码生成引擎
+│   │   ├── router/                 # 路由配置
+│   │   └── layout/                 # 页面布局组件
+│   ├── react-app/                  # React 19 前端
+│   └── server/                     # Express 后端
+├── packages/
+│   ├── core/                       # 框架无关纯逻辑共享层
+│   └── shared/                     # 工具/类型/API 共享层
+├── pnpm-workspace.yaml
+├── vite.config.ts
+├── package.json
+└── tsconfig.json
 ```
 
 ---
 
-**版本**: 1.0.0 | **最后更新**: 2026-04-23
+## 核心业务模块
+
+### 设计时引擎 (Design-Time Engine)
+- **入口**: `views/lowcode/FormBuilder.vue`
+- **机制**: HTML5 拖拽 API（`dragstart` / `drop`），左侧物料库，中间画布
+- **递归嵌套**: `BuilderNode.vue` 支持 `group`（分组）、`grid`（栅格）组件的无限极递归嵌套
+- **动态配置**: `ComponentConfig.vue` 实时监听选中节点，修改字段/显隐联动/正则校验
+
+### 运行时引擎 (Runtime Engine)
+- **入口**: `FormConsumer.vue`（线上使用）/ `FormPreview.vue`（即时预览）
+- **机制**: `FormNode.vue` 递归渲染 + `<component :is="...">` 动态挂载 Element Plus 组件
+- **数据流**: 拉取 JSON Schema → `initFormData` 初始化数据 → `generateValidationRules` 生成校验规则
+
+### 出码引擎 (Code Generation)
+- **核心模块**: `utils/simpleAstGenerator.ts`
+- **机制**: 遍历 JSON Schema（支持嵌套递归）→ 转换为标准 Vue 3 SFC 源码（template + script setup + style）
+
+---
+
+## 数据流
+
+### 构建流程
+```
+用户拖拽操作 → schema.value 更新 → 画布重新渲染
+  → 点击"保存发布" → saveFormSchemeApi() → POST /forms/save → 服务器存储
+```
+
+### 消费流程
+```
+FormConsumer 加载 → onMounted → getFormSchemaApi()
+  → initFormData() → generateValidationRules()
+  → el-form 渲染 → 用户填写 → validate() → POST 提交
+```
+
+---
+
+## 架构亮点
+
+1. **高度类型安全**: `types/lowcode.ts` 严格定义 `FormComponent` / `FormSchema`，保证配置面板→画板渲染→AST 代码生成的数据一致性
+2. **网络层封装**: `request.ts` 内置 Promise 队列控制 + 控制反转，Token 无感刷新
+3. **零样板代码**: `unplugin` 系列自动导入，无需手动 `import` Element Plus 组件和 Vue API
+4. **递归 + AST 结合**: 视图递归（BuilderNode/FormNode）+ AST 代码生成递归，突破单层扁平列表限制
+
+---
+
+**最后更新**: 2026-04-23
