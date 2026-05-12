@@ -5,7 +5,7 @@ import type { SystemUser, UserQuery, LoginParams, AuthResponse } from "../types/
 获取所有用户列表
 */
 export const getUserApi = (): Promise<SystemUser[]> => {
-    return request.get('/user');
+    return request.get('/users');
 }
 
 /*

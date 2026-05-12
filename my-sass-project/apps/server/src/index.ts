@@ -41,6 +41,63 @@ app.get('/api/users', (req, res) => {
     res.json(result);
 });
 
+// 2.1 新增用户
+app.post('/api/users', (req, res) => {
+    const { username, role, status, operator } = req.body as any;
+    if (!username || !role) {
+        return res.status(400).json({ message: 'username 与 role 必填' });
+    }
+    const exists = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+    if (exists) return res.status(409).json({ message: '用户名已存在' });
+
+    const roles = JSON.stringify([role]);
+    const info = db.prepare(
+        'INSERT INTO users (username, role, roles, status) VALUES (?, ?, ?, ?)'
+    ).run(username, role, roles, status || 'active');
+
+    logAudit(operator || 'system', '新增用户', Number(info.lastInsertRowid), `username: ${username}, role: ${role}`);
+    const created = db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid) as any;
+    res.json({ ...created, roles: JSON.parse(created.roles) });
+});
+
+// 2.2 更新用户
+app.put('/api/users/:id', (req, res) => {
+    const { id } = req.params;
+    const { role, status, operator } = req.body as any;
+
+    const updateFields: string[] = [];
+    const params: any[] = [];
+    if (role !== undefined) {
+        updateFields.push('role = ?', 'roles = ?');
+        params.push(role, JSON.stringify([role]));
+    }
+    if (status !== undefined) { updateFields.push('status = ?'); params.push(status); }
+
+    if (updateFields.length === 0) return res.status(400).json({ message: '没有要更新的字段' });
+
+    params.push(Number(id));
+    const result = db.prepare(`UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`).run(...params);
+
+    if (result.changes > 0) {
+        logAudit(operator || 'system', '更新用户', Number(id), JSON.stringify({ role, status }));
+        const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as any;
+        return res.json({ ...updated, roles: JSON.parse(updated.roles) });
+    }
+    res.status(404).json({ message: '用户不存在' });
+});
+
+// 2.3 删除用户
+app.delete('/api/users/:id', (req, res) => {
+    const { id } = req.params;
+    const operator = (req.body && req.body.operator) || req.query.operator || 'system';
+    const result = db.prepare('DELETE FROM users WHERE id = ?').run(Number(id));
+    if (result.changes > 0) {
+        logAudit(String(operator), '删除用户', Number(id));
+        return res.json({ success: true });
+    }
+    res.status(404).json({ message: '用户不存在' });
+});
+
 // 3. 获取部门树
 app.get('/api/departments', (req, res) => {
     const departments = db.prepare('SELECT * FROM departments').all();
